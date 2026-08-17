@@ -88,6 +88,7 @@ const onboardAvatarPreview = document.getElementById('onboard-avatar-preview');
 const onboardDisplaynameInput = document.getElementById('onboard-displayname'); 
 const btnSaveOnboarding = document.getElementById('btn-save-onboarding');
 let onboardBase64Avatar = "https://i.imgur.com/6YGWg0A.png";
+let onboardBase64Banner = null;
 
 // ================= INICIALIZACIÓN Y ENRUTAMIENTO =================
 function init() { 
@@ -251,9 +252,26 @@ function listenToGlobalUsers() {
         if (myData) {
             if (myData.banned) { alert("Has sido exiliado."); document.getElementById('btn-logout')?.click(); return; }
 
-            if (!myData.displayName || myData.avatar === "https://i.imgur.com/6YGWg0A.png") {
-                onboardingModal?.classList.remove('hidden'); if(myData.displayName && onboardDisplaynameInput) onboardDisplaynameInput.value = myData.displayName;
-            } else { onboardingModal?.classList.add('hidden'); }
+            if (!myData.displayName || myData.avatar === "https://i.imgur.com/6YGWg0A.png" || !myData.banner || !myData.bio) {
+    const onboardingModal = document.getElementById('onboarding-modal');
+    if (onboardingModal) onboardingModal.classList.remove('hidden');
+    
+    if(myData.displayName && document.getElementById('onboard-displayname')) document.getElementById('onboard-displayname').value = myData.displayName;
+    if(myData.bio && document.getElementById('onboard-bio')) document.getElementById('onboard-bio').value = myData.bio;
+    
+    if(myData.avatar && myData.avatar !== "https://i.imgur.com/6YGWg0A.png") {
+        onboardBase64Avatar = myData.avatar;
+        const avatarPreview = document.getElementById('onboard-avatar-preview');
+        if (avatarPreview) avatarPreview.src = myData.avatar;
+    }
+    if(myData.banner) {
+        onboardBase64Banner = myData.banner;
+        const bannerPreview = document.getElementById('onboard-banner-preview');
+        if(bannerPreview) { bannerPreview.src = myData.banner; bannerPreview.style.display = 'block'; }
+    }
+} else { 
+    document.getElementById('onboarding-modal')?.classList.add('hidden'); 
+}
 
             if(sidebarAvatar) sidebarAvatar.src = myData.avatar || "https://i.imgur.com/6YGWg0A.png"; 
             if(creatorAvatar) creatorAvatar.src = myData.avatar || "https://i.imgur.com/6YGWg0A.png";
@@ -303,16 +321,68 @@ function listenToGlobalUsers() {
 }
 
 if (onboardAvatarInput) { onboardAvatarInput.addEventListener('change', (e) => { if (e.target.files[0]) compressImage(e.target.files[0], 150, (base64) => { onboardBase64Avatar = base64; if(onboardAvatarPreview) onboardAvatarPreview.src = base64; }); }); }
+const onboardBannerInput = document.getElementById('onboard-banner');
+if (onboardBannerInput) { 
+    onboardBannerInput.addEventListener('change', (e) => { 
+        if (e.target.files[0]) {
+            compressImage(e.target.files[0], 1000, (base64) => { 
+                onboardBase64Banner = base64; 
+                const preview = document.getElementById('onboard-banner-preview');
+                if(preview) { preview.src = base64; preview.style.display = 'block'; }
+            }); 
+        }
+    }); 
+}
+
 if (btnSaveOnboarding) {
     btnSaveOnboarding.addEventListener('click', async () => {
-        const dName = onboardDisplaynameInput ? onboardDisplaynameInput.value.trim() : "";
-        if(!dName) { alert("Ingresa un Nombre."); return; }
-        if(onboardBase64Avatar === "https://i.imgur.com/6YGWg0A.png") { alert("Sube una foto (obligatorio)."); return; }
+        const dNameInput = document.getElementById('onboard-displayname');
+        const bioInput = document.getElementById('onboard-bio');
+        const dName = dNameInput ? dNameInput.value.trim() : "";
+        const bio = bioInput ? bioInput.value.trim() : "";
+        
+        if(!dName) { alert("Ingresá un Nombre."); return; }
+        if(onboardBase64Avatar === "https://i.imgur.com/6YGWg0A.png") { alert("Subí una foto de perfil."); return; }
+        if(!onboardBase64Banner) { alert("Agregá un banner para darle tu estética al perfil."); return; }
+        if(!bio) { alert("Escribí tu descripción/bio."); return; }
+        
         btnSaveOnboarding.disabled = true;
         try {
             const myId = globalUsersMap[currentUser]?.id;
-            if(myId) { await updateDoc(doc(db, "users", myId), { displayName: dName, avatar: onboardBase64Avatar }); onboardingModal?.classList.add('hidden'); }
-        } catch(e) {} finally { btnSaveOnboarding.disabled = false; }
+            if(myId) { 
+                await updateDoc(doc(db, "users", myId), { 
+                    displayName: dName, 
+                    avatar: onboardBase64Avatar,
+                    banner: onboardBase64Banner,
+                    bio: bio
+                }); 
+                document.getElementById('onboarding-modal')?.classList.add('hidden'); 
+            }
+        } catch(e) { console.error(e); } finally { btnSaveOnboarding.disabled = false; }
+    });
+}
+
+const editProfileBanner = document.getElementById('edit-profile-banner');
+if (editProfileBanner) {
+    editProfileBanner.addEventListener('change', async (e) => {
+        if (e.target.files[0]) {
+            compressImage(e.target.files[0], 1000, async (base64) => {
+                const myId = globalUsersMap[currentUser]?.id;
+                if(myId) { try { await updateDoc(doc(db, "users", myId), { banner: base64 }); } catch(err){} }
+            });
+        }
+    });
+}
+
+const editProfileAvatarInput = document.getElementById('edit-profile-avatar');
+if (editProfileAvatarInput) {
+    editProfileAvatarInput.addEventListener('change', async (e) => {
+        if (e.target.files[0]) {
+            compressImage(e.target.files[0], 150, async (base64) => {
+                const myId = globalUsersMap[currentUser]?.id;
+                if(myId) { try { await updateDoc(doc(db, "users", myId), { avatar: base64 }); } catch(err){} }
+            });
+        }
     });
 }
 // Reemplazar window.editDisplayName por:
@@ -712,20 +782,25 @@ function renderFeed(postsArray, container, useAlgorithm = false) {
 }
 
 window.showProfile = function(username) {
+    // Forzar reseteo de diseño si venimos desde Mensajes u otros lugares
+    document.querySelector('.app-layout')?.classList.remove('messages-mode');
+    document.getElementById('right-panel')?.classList.remove('hidden');
+    
     hideAllViews();
     const viewProfile = document.getElementById('view-profile');
     if (viewProfile) viewProfile.classList.remove('hidden');
+    window.scrollTo(0, 0); // Nos aseguramos de estar arriba del todo
 
     const safeUsername = username.toLowerCase();
     const userDbData = globalUsersMap[safeUsername];
 
-    // 1. Update DOM Elements
     const usernameNode = document.getElementById('profile-view-username');
     const displaynameNode = document.getElementById('profile-view-displayname');
     const avatarNode = document.getElementById('profile-view-avatar');
     const verifiedNode = document.getElementById('profile-view-verified');
     const topNameNode = document.getElementById('profile-top-name');
     const bioNode = document.getElementById('profile-view-bio'); 
+    const bannerNode = document.getElementById('profile-banner-bg');
     
     if (usernameNode) usernameNode.textContent = '@' + (userDbData ? userDbData.username : username);
     if (displaynameNode) displaynameNode.textContent = userDbData ? (userDbData.displayName || userDbData.username) : username;
@@ -733,25 +808,25 @@ window.showProfile = function(username) {
     if (avatarNode) avatarNode.src = (userDbData && userDbData.avatar) ? userDbData.avatar : "https://i.imgur.com/6YGWg0A.png";
     if (verifiedNode) verifiedNode.innerHTML = (userDbData && userDbData.verified) ? '<i class="fa-solid fa-circle-check verified-badge"></i>' : '';
     if (bioNode) bioNode.textContent = userDbData ? (userDbData.bio || '') : ''; 
+    if (bannerNode) bannerNode.style.backgroundImage = (userDbData && userDbData.banner) ? `url(${userDbData.banner})` : 'none';
 
-    // 2. Handle Button Visibility (My Profile vs Other Profile)
     const btnEditAvatarLabel = document.getElementById('btn-edit-avatar');
+    const btnEditBannerLabel = document.getElementById('btn-edit-banner');
     const btnEditName = document.getElementById('btn-edit-name');
     const btnFollow = document.getElementById('btn-follow-user');
     const btnMessage = document.getElementById('btn-message-user');
 
     if (safeUsername === currentUser) {
-        // Viewing own profile: show edit tools, hide follow/message
         if (btnEditAvatarLabel) btnEditAvatarLabel.classList.remove('hidden');
+        if (btnEditBannerLabel) btnEditBannerLabel.classList.remove('hidden');
         if (btnEditName) btnEditName.classList.remove('hidden');
         if (btnFollow) btnFollow.classList.add('hidden');
         if (btnMessage) btnMessage.classList.add('hidden');
     } else {
-        // Viewing someone else's profile
         if (btnEditAvatarLabel) btnEditAvatarLabel.classList.add('hidden');
+        if (btnEditBannerLabel) btnEditBannerLabel.classList.add('hidden');
         if (btnEditName) btnEditName.classList.add('hidden');
         
-        // FIX: Asignar el evento y estado inicial del botón "Seguir"
         if (btnFollow) {
             btnFollow.classList.remove('hidden');
             const amIFollowing = userDbData && userDbData.followers ? userDbData.followers.includes(currentUser) : false;
@@ -771,11 +846,9 @@ window.showProfile = function(username) {
         }
     }
 
-    // 3. Render User's Posts
     const profilePostsContainer = document.getElementById('profile-posts-container');
     if (profilePostsContainer) {
         const userPosts = allGlobalPosts.filter(p => (p.usernameLower || p.username.toLowerCase()) === safeUsername);
-        
         const topPostsNode = document.getElementById('profile-top-posts');
         if (topPostsNode) topPostsNode.textContent = `${userPosts.length} posts`;
 
@@ -790,31 +863,34 @@ window.showProfile = function(username) {
     window.toggleFollow = async function(targetUserLower, isCurrentlyFollowing) {
     if (!currentUser) return;
     
+    const btnFollow = document.getElementById('btn-follow-user');
+    if (btnFollow) btnFollow.disabled = true;
+
     const myId = globalUsersMap[currentUser]?.id;
     const targetId = globalUsersMap[targetUserLower]?.id;
-    if (!myId || !targetId) return;
-
+    
     try {
-        if (isCurrentlyFollowing) {
-            // Unfollow
-            await updateDoc(doc(db, "users", myId), { following: arrayRemove(targetUserLower) });
-            await updateDoc(doc(db, "users", targetId), { followers: arrayRemove(currentUser) });
-        } else {
-            // Follow
-            await updateDoc(doc(db, "users", myId), { following: arrayUnion(targetUserLower) });
-            await updateDoc(doc(db, "users", targetId), { followers: arrayUnion(currentUser) });
-            
-            // Send Notification
-            await addDoc(collection(db, "notifications"), {
-                to: targetUserLower,
-                from: currentUser,
-                type: 'follow',
-                timestamp: serverTimestamp()
-            });
-            await updateDoc(doc(db, "users", targetId), { unreadNotifs: increment(1) });
+        if (myId && targetId) {
+            if (isCurrentlyFollowing) {
+                await updateDoc(doc(db, "users", myId), { following: arrayRemove(targetUserLower) });
+                await updateDoc(doc(db, "users", targetId), { followers: arrayRemove(currentUser) });
+            } else {
+                await updateDoc(doc(db, "users", myId), { following: arrayUnion(targetUserLower) });
+                await updateDoc(doc(db, "users", targetId), { followers: arrayUnion(currentUser) });
+                
+                await addDoc(collection(db, "notifications"), {
+                    to: targetUserLower,
+                    from: currentUser,
+                    type: 'follow',
+                    timestamp: serverTimestamp()
+                });
+                await updateDoc(doc(db, "users", targetId), { unreadNotifs: increment(1) });
+            }
         }
     } catch (error) {
-        console.error("Error toggling follow:", error);
+        console.error("Error al seguir/dejar de seguir:", error);
+    } finally {
+        if (btnFollow) btnFollow.disabled = false;
     }
 };
 
