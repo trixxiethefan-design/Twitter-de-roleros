@@ -98,6 +98,25 @@ function init() {
 
 window.addEventListener('hashchange', handleRouting);
 
+window.setFeedTab = function(tab) {
+    currentFeedTab = tab;
+    const tabViral = document.getElementById('tab-feed-viral');
+    const tabNuevos = document.getElementById('tab-feed-nuevos');
+
+    if (tab === 'viral') {
+        if (tabViral) { tabViral.classList.add('active'); tabViral.style.color = 'var(--text-main)'; tabViral.style.borderBottom = '3px solid var(--accent-primary)'; }
+        if (tabNuevos) { tabNuevos.classList.remove('active'); tabNuevos.style.color = 'var(--text-muted)'; tabNuevos.style.borderBottom = '3px solid transparent'; }
+    } else {
+        if (tabNuevos) { tabNuevos.classList.add('active'); tabNuevos.style.color = 'var(--text-main)'; tabNuevos.style.borderBottom = '3px solid var(--accent-primary)'; }
+        if (tabViral) { tabViral.classList.remove('active'); tabViral.style.color = 'var(--text-muted)'; tabViral.style.borderBottom = '3px solid transparent'; }
+    }
+
+    // Refrescar el feed
+    if (viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) {
+        renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral');
+    }
+}
+
 function handleRouting() {
     if (!currentUser) return;
     const hash = window.location.hash;
@@ -129,10 +148,20 @@ function handleRouting() {
         const searchInput = document.getElementById('mod-search-input'); renderModPanel(searchInput ? searchInput.value.toLowerCase() : ""); 
     } else if (hash === '#search') {
         hideAllViews(); const vs = document.getElementById('view-search'); if (vs) vs.classList.remove('hidden'); document.getElementById('nav-search')?.classList.add('active'); 
-    } else if (hash === '' || hash === '#') {
+    } else if (hash === '#feed') {
+        // Ahora el feed principal tiene su propio hash seguro
         hideAllViews(); viewFeed?.classList.remove('hidden'); document.getElementById('nav-home')?.classList.add('active'); 
-        if(allGlobalPosts.length > 0 && postsContainer) renderFeed(allGlobalPosts, postsContainer, true);
+        if(allGlobalPosts.length > 0 && postsContainer) renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral');
+    } else if (hash === '' || hash === '#') {
+        // FORZAMOS a que al entrar/reiniciar te envíe directo a tu perfil
+        window.location.hash = `#/@${currentUser}`;
     }
+}
+
+// Sobreescribe showFeedView para que apunte al nuevo hash
+window.showFeedView = function() { 
+    if(window.location.hash !== '#feed') window.location.hash = '#feed'; 
+    else handleRouting(); 
 }
 
 // Ahora los botones solo cambian el hash, obligando al sistema a navegar 100% seguro.
@@ -534,6 +563,60 @@ window.insertMention = function(username) {
 document.addEventListener('click', (e) => { if(!e.target.closest('.post-input-container') && mentionsDropdown) mentionsDropdown.classList.add('hidden'); });
 if (postImageUpload) { postImageUpload.addEventListener('change', (e) => { if (e.target.files[0]) { compressImage(e.target.files[0], 600, (base64) => { currentBase64PostImage = base64; if(postImagePreview) postImagePreview.src = base64; if(postImagePreviewContainer) postImagePreviewContainer.classList.remove('hidden'); }); }}); }
 if (btnRemoveImage) { btnRemoveImage.addEventListener('click', () => { currentBase64PostImage = null; postImageUpload.value = ''; if(postImagePreviewContainer) postImagePreviewContainer.classList.add('hidden'); }); }
+// Variable global para las pestañas (colócala al inicio con las demás variables globales)
+let currentFeedTab = 'viral';
+
+// ================= SUBIDA DE MULTIMEDIA Y PREVISUALIZACIÓN =================
+if (postImageUpload) {
+    postImageUpload.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const isVideo = file.type.startsWith('video/');
+            const isGif = file.type === 'image/gif';
+
+            if (isVideo || isGif) {
+                // Límite conservador de 950KB para videos/gifs por restricción de Base64
+                if (file.size > 950 * 1024) {
+                    alert("¡El video o GIF es muy pesado! El límite para asegurar un rol fluido es de 950KB.");
+                    postImageUpload.value = '';
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    currentBase64PostImage = event.target.result;
+                    renderMediaPreview(isVideo, event.target.result);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Para imágenes normales, mantenemos la compresión para optimizar el rendimiento
+                compressImage(file, 600, (base64) => {
+                    currentBase64PostImage = base64;
+                    renderMediaPreview(false, base64);
+                });
+            }
+        }
+    });
+}
+
+function renderMediaPreview(isVideo, src) {
+    if (postImagePreviewContainer) {
+        postImagePreviewContainer.classList.remove('hidden');
+        const mediaHtml = isVideo 
+            ? `<video src="${src}" autoplay loop muted style="max-width: 100%; max-height: 300px; border-radius: 8px;"></video>`
+            : `<img src="${src}" alt="Preview" style="max-width: 100%; max-height: 300px; border-radius: 8px; object-fit: cover;">`;
+            
+        postImagePreviewContainer.innerHTML = `<div style="position:relative; display:inline-block;">
+            ${mediaHtml}
+            <button id="btn-remove-image" style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.6); border:none; color:white; border-radius:50%; width:30px; height:30px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fa-solid fa-xmark"></i></button>
+        </div>`;
+        
+        document.getElementById('btn-remove-image').addEventListener('click', () => {
+            currentBase64PostImage = null;
+            if(postImageUpload) postImageUpload.value = '';
+            if(postImagePreviewContainer) postImagePreviewContainer.classList.add('hidden');
+        });
+    }
+}
 
 // ================= AUTENTICACIÓN =================
 if (tabLogin) tabLogin.addEventListener('click', () => { isLoginMode = true; tabLogin.classList.add('active'); if(tabRegister) tabRegister.classList.remove('active'); if(authSubmit) authSubmit.textContent = 'Entrar'; if(authError) authError.classList.add('hidden'); });
@@ -693,7 +776,7 @@ function loadPostsRealtime() {
         
         extractTrends(allGlobalPosts); // <-- TENDENCIAS AQUÍ
         
-        if (viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) renderFeed(allGlobalPosts, postsContainer, true);
+        if (viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral');
         if (viewProfile && !viewProfile.classList.contains('hidden') && profilePostsContainer) {
             const node = document.getElementById('profile-view-username');
             if(node) {
@@ -747,7 +830,12 @@ function generatePostHTML(post) {
     const hasLiked = actualPost.likedBy && (actualPost.likedBy.includes(mySafeLower) || (currentUserRaw && actualPost.likedBy.includes(currentUserRaw))); const likesCount = actualPost.likedBy ? actualPost.likedBy.length : 0;
     const repostsCount = allGlobalPosts.filter(p => p.isRepost && p.originalId === actualPost.id).length; const hasReposted = allGlobalPosts.some(p => p.isRepost && p.originalId === actualPost.id && (p.usernameLower || p.username).toLowerCase() === mySafeLower);
     const userDbData = globalUsersMap[actualAuthorLower] || {}; const avatar = userDbData.avatar || "https://i.imgur.com/6YGWg0A.png"; const displayName = userDbData.displayName || actualPost.username; const isVerified = userDbData.verified ? '<i class="fa-solid fa-circle-check verified-badge" title="Verificado"></i>' : '';
-    const imageHtml = actualPost.attachedImage ? `<img src="${actualPost.attachedImage}" class="post-attached-image" alt="Adjunto" onclick="event.stopPropagation(); openImageModal(this.src)">` : '';
+    // Dentro de function generatePostHTML(post)...
+    const imageHtml = actualPost.attachedImage 
+        ? (actualPost.attachedImage.startsWith('data:video/') 
+            ? `<video src="${actualPost.attachedImage}" class="post-attached-image" controls loop style="max-width: 100%; max-height: 450px; border-radius: 12px; margin-top: 10px; background: #000;" onclick="event.stopPropagation()"></video>`
+            : `<img src="${actualPost.attachedImage}" class="post-attached-image" alt="Adjunto" style="margin-top: 10px;" onclick="event.stopPropagation(); openImageModal(this.src)">`) 
+        : '';
 
     return `
         <div class="post" id="post-node-${post.id}">
@@ -864,14 +952,16 @@ window.showProfile = function(username) {
         }
     }
 
+    // Dentro de showProfile(username) casi al final...
     const profilePostsContainer = document.getElementById('profile-posts-container');
     if (profilePostsContainer) {
         const userPosts = allGlobalPosts.filter(p => (p.usernameLower || (p.username && p.username.toLowerCase())) === safeUsername);
         const topPostsNode = document.getElementById('profile-top-posts');
         if (topPostsNode) topPostsNode.textContent = `${userPosts.length} posts`;
 
-        if (userPosts.length === 0 && allGlobalPosts.length > 0) {
-            profilePostsContainer.innerHTML = '<p style="text-align:center; padding:40px; color:var(--text-muted);">Este rolero aún no ha publicado ningún pergamino.</p>';
+        // Modificamos esta validación para evitar que renderice la nada misma 
+        if (userPosts.length === 0) {
+            profilePostsContainer.innerHTML = '<p style="text-align:center; padding:40px; color:var(--text-muted);">Aún no hay pergaminos.</p>';
         } else {
             renderFeed(userPosts, profilePostsContainer, false);
         }
