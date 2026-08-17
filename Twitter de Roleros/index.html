@@ -14,23 +14,33 @@
 <body>
 
     <div id="onboarding-modal" class="image-modal hidden" style="z-index: 10000; backdrop-filter: blur(10px);">
-        <div class="auth-box" style="position: relative;">
-            <h2 style="color: var(--text-main); margin-bottom: 10px;">¡Completa tu Perfil!</h2>
-            <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">Para entrar, es obligatorio tener una foto y un Nombre de Rolero.</p>
-            
-            <div style="display:flex; justify-content:center; margin-bottom: 20px;">
-                <label for="onboard-avatar" class="avatar-label">
-                    <img id="onboard-avatar-preview" src="https://i.imgur.com/6YGWg0A.png" alt="Avatar">
-                    <span>Sube tu foto *</span>
-                </label>
-                <input type="file" id="onboard-avatar" accept="image/*" class="hidden">
-            </div>
-
-            <input type="text" id="onboard-displayname" placeholder="Tu Nombre o Apodo (Ej: Trixxie)" style="width: 100%; padding: 12px; margin-bottom: 15px; background: var(--bg-dark); border: 1px solid var(--border-color); color: white; border-radius: 4px; outline: none;">
-            
-            <button id="btn-save-onboarding" class="btn-primary" style="width: 100%; padding: 12px;">Guardar y Entrar</button>
+    <div class="auth-box" style="position: relative; max-height: 90vh; overflow-y: auto; width: 90%; max-width: 500px;">
+        <h2 style="color: var(--text-main); margin-bottom: 10px;">¡Completá tu Perfil!</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">Para seguir roleando, necesitamos que configures tu estética. ¡Agregá tu foto, un banner y tu descripción!</p>
+        
+        <div style="margin-bottom: 20px; text-align: center;">
+            <label for="onboard-banner" style="cursor:pointer; display:block; padding:30px 10px; border: 2px dashed var(--border-color); border-radius: 8px; transition: 0.3s;" onmouseover="this.style.borderColor='var(--accent-primary)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                <img id="onboard-banner-preview" src="" alt="Banner" style="max-width:100%; height:120px; border-radius: 6px; display:none; margin: 0 auto 10px auto; object-fit: cover; width: 100%;">
+                <span style="color: var(--text-muted);"><i class="fa-solid fa-image" style="font-size: 1.5rem; display:block; margin-bottom: 5px;"></i> Subir Banner *</span>
+            </label>
+            <input type="file" id="onboard-banner" accept="image/*" class="hidden">
         </div>
+
+        <div style="display:flex; justify-content:center; margin-bottom: 20px;">
+            <label for="onboard-avatar" class="avatar-label">
+                <img id="onboard-avatar-preview" src="https://i.imgur.com/6YGWg0A.png" alt="Avatar">
+                <span>Sube tu foto *</span>
+            </label>
+            <input type="file" id="onboard-avatar" accept="image/*" class="hidden">
+        </div>
+
+        <input type="text" id="onboard-displayname" placeholder="Tu Nombre o Apodo" style="width: 100%; padding: 12px; margin-bottom: 15px; background: var(--bg-dark); border: 1px solid var(--border-color); color: white; border-radius: 4px; outline: none;">
+        
+        <textarea id="onboard-bio" placeholder="Escribí tu descripción (Bio)... ¡Añadí tu toque soft y estético!" style="width: 100%; padding: 12px; margin-bottom: 15px; background: var(--bg-dark); border: 1px solid var(--border-color); color: white; border-radius: 4px; outline: none; min-height: 80px; resize: none;"></textarea>
+
+        <button id="btn-save-onboarding" class="btn-primary" style="width: 100%; padding: 12px;">Guardar y Entrar</button>
     </div>
+</div>
 
     <div id="image-modal" class="image-modal hidden" onclick="closeImageModal()">
         <span class="close-modal"><i class="fa-solid fa-xmark"></i></span>
@@ -167,35 +177,39 @@
                         <span id="profile-top-posts" style="color:var(--text-muted); font-size:0.8rem;">0 posts</span>
                     </div>
                 </header>
-                <div class="profile-header-banner">
-                    <div class="profile-banner-bg"></div>
-                    <div class="profile-info-section">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:-60px; margin-bottom:10px;">
-                            <img id="profile-view-avatar" src="https://i.imgur.com/6YGWg0A.png" alt="Avatar" style="cursor:pointer;" onclick="openImageModal(this.src)">
-                            
-                            <div class="profile-action-btns">
-                                <input type="file" id="edit-profile-avatar" accept="image/*" class="hidden">
-                                <label for="edit-profile-avatar" id="btn-edit-avatar" class="btn-outline hidden" style="cursor:pointer;"><i class="fa-solid fa-camera"></i> Cambiar Foto</label>
-                                <button id="btn-edit-name" class="btn-outline hidden" onclick="editProfile()" title="Editar Perfil"><i class="fa-solid fa-pen"></i></button>
-                                
-                                <button id="btn-share-profile" class="btn-outline" title="Copiar Link"><i class="fa-solid fa-link"></i></button>
-                                <button id="btn-message-user" class="btn-outline hidden"><i class="fa-solid fa-envelope"></i></button>
-                                <button id="btn-follow-user" class="btn-primary hidden" style="font-weight:bold; padding: 6px 15px;">Seguir</button>
-                            </div>
-                        </div>
+                <div class="profile-header-banner" style="position: relative;">
+    <div id="profile-banner-bg" class="profile-banner-bg" style="background-color: var(--bg-dark); background-size: cover; background-position: center; height: 180px; border-radius: 0;"></div>
+    
+    <div class="profile-info-section" style="padding: 0 20px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:-60px; margin-bottom:10px;">
+            <img id="profile-view-avatar" src="https://i.imgur.com/6YGWg0A.png" alt="Avatar" style="cursor:pointer; width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--bg-main); object-fit: cover;" onclick="openImageModal(this.src)">
+            
+            <div class="profile-action-btns" style="display: flex; gap: 10px;">
+                <input type="file" id="edit-profile-banner" accept="image/*" class="hidden">
+                <label for="edit-profile-banner" id="btn-edit-banner" class="btn-outline hidden" style="cursor:pointer;" title="Cambiar Banner"><i class="fa-solid fa-image"></i></label>
+                
+                <input type="file" id="edit-profile-avatar" accept="image/*" class="hidden">
+                <label for="edit-profile-avatar" id="btn-edit-avatar" class="btn-outline hidden" style="cursor:pointer;" title="Cambiar Foto"><i class="fa-solid fa-camera"></i></label>
+                
+                <button id="btn-edit-name" class="btn-outline hidden" onclick="editProfile()" title="Editar Info"><i class="fa-solid fa-pen"></i></button>
+                <button id="btn-share-profile" class="btn-outline" title="Copiar Link"><i class="fa-solid fa-link"></i></button>
+                <button id="btn-message-user" class="btn-outline hidden"><i class="fa-solid fa-envelope"></i></button>
+                <button id="btn-follow-user" class="btn-primary hidden" style="font-weight:bold; padding: 6px 15px;">Seguir</button>
+            </div>
+        </div>
 
-                        <h3 id="profile-view-displayname-container" style="margin-bottom: 2px;">
-                            <span id="profile-view-displayname">Usuario</span>
-                            <span id="profile-view-verified"></span>
-                        </h3>
-                        <p id="profile-view-bio" style="font-size:0.95rem; margin-bottom:15px; white-space: pre-wrap; color: var(--text-main);"></p>
-                        
-                        <div class="profile-follow-stats">
-                            <div><span id="profile-stat-following" class="stat-number">0</span> Siguiendo</div>
-                            <div><span id="profile-stat-followers" class="stat-number">0</span> Seguidores</div>
-                        </div>
-                    </div>
-                </div>
+        <h3 id="profile-view-displayname-container" style="margin-bottom: 2px;">
+            <span id="profile-view-displayname">Usuario</span>
+            <span id="profile-view-verified"></span>
+        </h3>
+        <p id="profile-view-bio" style="font-size:0.95rem; margin-bottom:15px; white-space: pre-wrap; color: var(--text-main); line-height: 1.4;"></p>
+        
+        <div class="profile-follow-stats">
+            <div><span id="profile-stat-following" class="stat-number">0</span> Siguiendo</div>
+            <div><span id="profile-stat-followers" class="stat-number">0</span> Seguidores</div>
+        </div>
+    </div>
+</div>
                 <div class="profile-tabs"><button class="active">Posts</button></div>
                 <div id="profile-posts-container"></div>
             </div>
