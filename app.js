@@ -137,7 +137,6 @@ function handleRouting() {
 
 // Ahora los botones solo cambian el hash, obligando al sistema a navegar 100% seguro.
 window.showFeedView = function() { if(window.location.hash !== '') window.location.hash = ''; else handleRouting(); }
-window.goToMyProfile = function() { if(window.location.hash !== `#/@${currentUser}`) window.location.hash = `#/@${currentUser}`; else handleRouting(); }
 window.showThreadsView = function() { if(window.location.hash !== '#threads') window.location.hash = '#threads'; else handleRouting(); }
 window.showModView = function() { if(window.location.hash !== '#mod') window.location.hash = '#mod'; else handleRouting(); }
 window.showNotifsView = function() { if(window.location.hash !== '#notifs') window.location.hash = '#notifs'; else handleRouting(); }
@@ -182,7 +181,13 @@ window.showFeedView = function() {
     if(allGlobalPosts.length > 0 && postsContainer) renderFeed(allGlobalPosts, postsContainer, true); 
 }
 
-window.goToMyProfile = function() { window.location.hash = `#/@${currentUser}`; }
+window.goToMyProfile = function() { 
+    if(window.location.hash !== `#/@${currentUser}`) {
+        window.location.hash = `#/@${currentUser}`; 
+    } else {
+        handleRouting(); 
+    }
+}
 
 window.showThreadsView = function() { 
     hideAllViews(); viewThreads?.classList.remove('hidden'); document.getElementById('nav-threads')?.classList.add('active'); 
@@ -293,10 +298,11 @@ function listenToGlobalUsers() {
                 const viewedUser = usernameNode.textContent.replace('@','').toLowerCase();
                 const userDbData = globalUsersMap[viewedUser];
                 if (userDbData) {
-                    const statFollowing = document.getElementById('profile-stat-following'); const statFollowers = document.getElementById('profile-stat-followers');
-                    if (statFollowing) statFollowing.textContent = (userDbData.following || []).length; if (statFollowers) statFollowers.textContent = (userDbData.followers || []).length;
+                    const statFollowing = document.getElementById('profile-stat-following'); 
+                    const statFollowers = document.getElementById('profile-stat-followers');
+                    if (statFollowing) statFollowing.textContent = (userDbData.following || []).length; 
+                    if (statFollowers) statFollowers.textContent = (userDbData.followers || []).length;
                     
-                    // Asegurar que nombre, foto, verificado y biografía NO desaparezcan:
                     const avatarNode = document.getElementById('profile-view-avatar');
                     if(avatarNode) avatarNode.src = userDbData.avatar || "https://i.imgur.com/6YGWg0A.png";
                     const displaynameNode = document.getElementById('profile-view-displayname');
@@ -307,6 +313,10 @@ function listenToGlobalUsers() {
                     if(topNameNode) topNameNode.textContent = userDbData.displayName || userDbData.username;
                     const bioNode = document.getElementById('profile-view-bio');
                     if(bioNode) bioNode.textContent = userDbData.bio || '';
+                    
+                    // FIX: El banner no se actualizaba en tiempo real
+                    const bannerNode = document.getElementById('profile-banner-bg');
+                    if(bannerNode) bannerNode.style.backgroundImage = userDbData.banner ? `url(${userDbData.banner})` : 'none';
 
                     const btnFollow = document.getElementById('btn-follow-user');
                     if (btnFollow && viewedUser !== currentUser) {
@@ -782,16 +792,19 @@ function renderFeed(postsArray, container, useAlgorithm = false) {
 }
 
 window.showProfile = function(username) {
-    // Forzar reseteo de diseño si venimos desde Mensajes u otros lugares
+    // Forzar reseteo de diseño
     document.querySelector('.app-layout')?.classList.remove('messages-mode');
     document.getElementById('right-panel')?.classList.remove('hidden');
     
     hideAllViews();
     const viewProfile = document.getElementById('view-profile');
     if (viewProfile) viewProfile.classList.remove('hidden');
-    window.scrollTo(0, 0); // Nos aseguramos de estar arriba del todo
+    window.scrollTo(0, 0);
 
-    const safeUsername = username.toLowerCase();
+    // FIX: Marcar el botón de navegación como activo
+    document.getElementById('nav-profile')?.classList.add('active');
+
+    const safeUsername = username.toLowerCase().trim();
     const userDbData = globalUsersMap[safeUsername];
 
     const usernameNode = document.getElementById('profile-view-username');
@@ -802,13 +815,19 @@ window.showProfile = function(username) {
     const bioNode = document.getElementById('profile-view-bio'); 
     const bannerNode = document.getElementById('profile-banner-bg');
     
-    if (usernameNode) usernameNode.textContent = '@' + (userDbData ? userDbData.username : username);
-    if (displaynameNode) displaynameNode.textContent = userDbData ? (userDbData.displayName || userDbData.username) : username;
+    if (usernameNode) usernameNode.textContent = '@' + (userDbData ? userDbData.username : safeUsername);
+    if (displaynameNode) displaynameNode.textContent = userDbData ? (userDbData.displayName || userDbData.username) : safeUsername;
     if (topNameNode) topNameNode.textContent = userDbData ? (userDbData.displayName || userDbData.username) : 'Perfil';
     if (avatarNode) avatarNode.src = (userDbData && userDbData.avatar) ? userDbData.avatar : "https://i.imgur.com/6YGWg0A.png";
     if (verifiedNode) verifiedNode.innerHTML = (userDbData && userDbData.verified) ? '<i class="fa-solid fa-circle-check verified-badge"></i>' : '';
     if (bioNode) bioNode.textContent = userDbData ? (userDbData.bio || '') : ''; 
     if (bannerNode) bannerNode.style.backgroundImage = (userDbData && userDbData.banner) ? `url(${userDbData.banner})` : 'none';
+
+    // FIX: Mostrar Seguidores y Seguidos
+    const statFollowing = document.getElementById('profile-stat-following');
+    const statFollowers = document.getElementById('profile-stat-followers');
+    if (statFollowing) statFollowing.textContent = (userDbData && userDbData.following) ? userDbData.following.length : 0;
+    if (statFollowers) statFollowers.textContent = (userDbData && userDbData.followers) ? userDbData.followers.length : 0;
 
     const btnEditAvatarLabel = document.getElementById('btn-edit-avatar');
     const btnEditBannerLabel = document.getElementById('btn-edit-banner');
@@ -839,7 +858,6 @@ window.showProfile = function(username) {
             }
             btnFollow.onclick = () => toggleFollow(safeUsername, amIFollowing);
         }
-
         if (btnMessage) {
             btnMessage.classList.remove('hidden');
             btnMessage.onclick = () => startChatWith(safeUsername);
@@ -848,11 +866,11 @@ window.showProfile = function(username) {
 
     const profilePostsContainer = document.getElementById('profile-posts-container');
     if (profilePostsContainer) {
-        const userPosts = allGlobalPosts.filter(p => (p.usernameLower || p.username.toLowerCase()) === safeUsername);
+        const userPosts = allGlobalPosts.filter(p => (p.usernameLower || (p.username && p.username.toLowerCase())) === safeUsername);
         const topPostsNode = document.getElementById('profile-top-posts');
         if (topPostsNode) topPostsNode.textContent = `${userPosts.length} posts`;
 
-        if (userPosts.length === 0) {
+        if (userPosts.length === 0 && allGlobalPosts.length > 0) {
             profilePostsContainer.innerHTML = '<p style="text-align:center; padding:40px; color:var(--text-muted);">Este rolero aún no ha publicado ningún pergamino.</p>';
         } else {
             renderFeed(userPosts, profilePostsContainer, false);
@@ -864,7 +882,20 @@ window.showProfile = function(username) {
     if (!currentUser) return;
     
     const btnFollow = document.getElementById('btn-follow-user');
-    if (btnFollow) btnFollow.disabled = true;
+    
+    // FIX: Actualización visual instantánea antes de procesar backend
+    if (btnFollow) {
+        if (isCurrentlyFollowing) {
+            btnFollow.innerHTML = `Seguir`; 
+            btnFollow.classList.remove('following-active');
+            btnFollow.onclick = () => toggleFollow(targetUserLower, false);
+        } else {
+            btnFollow.innerHTML = `<i class="fa-solid fa-user-check"></i> Siguiendo`; 
+            btnFollow.classList.add('following-active');
+            btnFollow.onclick = () => toggleFollow(targetUserLower, true);
+        }
+        btnFollow.disabled = true; // Bloquea momentáneamente el spam de clics
+    }
 
     const myId = globalUsersMap[currentUser]?.id;
     const targetId = globalUsersMap[targetUserLower]?.id;
