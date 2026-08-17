@@ -723,20 +723,14 @@ window.showProfile = function(username) {
     const avatarNode = document.getElementById('profile-view-avatar');
     const verifiedNode = document.getElementById('profile-view-verified');
     const topNameNode = document.getElementById('profile-top-name');
-    const topNameNode = document.getElementById('profile-top-name');
-    const bioNode = document.getElementById('profile-view-bio'); // Añadido para la bio
+    const bioNode = document.getElementById('profile-view-bio'); 
     
     if (usernameNode) usernameNode.textContent = '@' + (userDbData ? userDbData.username : username);
     if (displaynameNode) displaynameNode.textContent = userDbData ? (userDbData.displayName || userDbData.username) : username;
     if (topNameNode) topNameNode.textContent = userDbData ? (userDbData.displayName || userDbData.username) : 'Perfil';
     if (avatarNode) avatarNode.src = (userDbData && userDbData.avatar) ? userDbData.avatar : "https://i.imgur.com/6YGWg0A.png";
     if (verifiedNode) verifiedNode.innerHTML = (userDbData && userDbData.verified) ? '<i class="fa-solid fa-circle-check verified-badge"></i>' : '';
-    if (bioNode) bioNode.textContent = userDbData ? (userDbData.bio || '') : ''; // Añadido para la bio
-    if (usernameNode) usernameNode.textContent = '@' + (userDbData ? userDbData.username : username);
-    if (displaynameNode) displaynameNode.textContent = userDbData ? (userDbData.displayName || userDbData.username) : username;
-    if (topNameNode) topNameNode.textContent = userDbData ? (userDbData.displayName || userDbData.username) : 'Perfil';
-    if (avatarNode) avatarNode.src = (userDbData && userDbData.avatar) ? userDbData.avatar : "https://i.imgur.com/6YGWg0A.png";
-    if (verifiedNode) verifiedNode.innerHTML = (userDbData && userDbData.verified) ? '<i class="fa-solid fa-circle-check verified-badge"></i>' : '';
+    if (bioNode) bioNode.textContent = userDbData ? (userDbData.bio || '') : ''; 
 
     // 2. Handle Button Visibility (My Profile vs Other Profile)
     const btnEditAvatarLabel = document.getElementById('btn-edit-avatar');
