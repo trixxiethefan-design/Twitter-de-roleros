@@ -4,6 +4,8 @@ import {
     onSnapshot, orderBy, serverTimestamp, deleteDoc, doc, 
     updateDoc, arrayUnion, arrayRemove, increment 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+// NUEVO: Importamos las funciones de Storage
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
 
 // ================= CONFIGURACIÓN =================
 const firebaseConfig = {
@@ -17,6 +19,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+// NUEVO: Inicializamos Storage
+const storage = getStorage(app);
 
 // ================= VARIABLES GLOBALES =================
 let currentUserRaw = localStorage.getItem('rolero_username') || null;
@@ -149,16 +153,13 @@ function handleRouting() {
     } else if (hash === '#search') {
         hideAllViews(); const vs = document.getElementById('view-search'); if (vs) vs.classList.remove('hidden'); document.getElementById('nav-search')?.classList.add('active'); 
     } else if (hash === '#feed') {
-        // Ahora el feed principal tiene su propio hash seguro
         hideAllViews(); viewFeed?.classList.remove('hidden'); document.getElementById('nav-home')?.classList.add('active'); 
         if(allGlobalPosts.length > 0 && postsContainer) renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral');
     } else if (hash === '' || hash === '#') {
-    // FORZAMOS a que al entrar/reiniciar te envíe directo al feed
-    window.location.hash = '#feed';
+        window.location.hash = '#feed';
    }
 }
 
-// Ahora los botones solo cambian el hash, obligando al sistema a navegar 100% seguro.
 window.showThreadsView = function() { if(window.location.hash !== '#threads') window.location.hash = '#threads'; else handleRouting(); }
 window.showModView = function() { if(window.location.hash !== '#mod') window.location.hash = '#mod'; else handleRouting(); }
 window.showNotifsView = function() { if(window.location.hash !== '#notifs') window.location.hash = '#notifs'; else handleRouting(); }
@@ -212,39 +213,9 @@ window.goToMyProfile = function() {
     }
 }
 
-window.showThreadsView = function() { 
-    hideAllViews(); viewThreads?.classList.remove('hidden'); document.getElementById('nav-threads')?.classList.add('active'); 
-    document.getElementById('thread-list-container')?.classList.remove('hidden'); document.getElementById('active-thread-container')?.classList.add('hidden'); loadThreadsList(); 
-}
-
-window.showModView = function() { 
-    hideAllViews(); viewMod?.classList.remove('hidden'); document.getElementById('nav-mod')?.classList.add('active'); 
-    const searchInput = document.getElementById('mod-search-input'); renderModPanel(searchInput ? searchInput.value.toLowerCase() : ""); 
-}
-
-window.showNotifsView = function() { 
-    hideAllViews(); viewNotifs?.classList.remove('hidden'); document.getElementById('nav-notifs')?.classList.add('active'); 
-    const myId = globalUsersMap[currentUser]?.id; if (myId) updateDoc(doc(db, "users", myId), { unreadNotifs: 0 }); 
-}
-
-window.showMessagesView = function() {
-    hideAllViews(); viewMessages?.classList.remove('hidden'); document.getElementById('nav-messages')?.classList.add('active');
-    document.querySelector('.app-layout')?.classList.add('messages-mode'); document.getElementById('right-panel')?.classList.add('hidden');
-    document.getElementById('chat-area')?.classList.add('hidden'); document.getElementById('chat-placeholder')?.classList.remove('hidden');
-    renderChatSidebar();
-}
-
 window.closeChatMobile = function() { document.getElementById('chat-area')?.classList.add('hidden'); document.getElementById('chat-placeholder')?.classList.remove('hidden'); currentChatUser = null; if(unsubscribeChat) unsubscribeChat(); if(unsubscribeChatMeta) unsubscribeChatMeta(); renderChatSidebar(); }
 window.openImageModal = function(src) { if(modalImage) modalImage.src = src; imageModal?.classList.remove('hidden'); }
 window.closeImageModal = function() { imageModal?.classList.add('hidden'); if(modalImage) modalImage.src = ""; }
-
-// Agrega esta nueva función en la sección de "INICIALIZACIÓN Y ENRUTAMIENTO" (cerca de window.showFeedView)
-window.showSearchView = function() { 
-    hideAllViews(); 
-    const viewSearch = document.getElementById('view-search');
-    if (viewSearch) viewSearch.classList.remove('hidden'); 
-    document.getElementById('nav-search')?.classList.add('active'); 
-}
 
 // ================= COMPRESIÓN IMÁGENES =================
 function compressImage(file, maxSize, callback) {
@@ -281,25 +252,25 @@ function listenToGlobalUsers() {
             if (myData.banned) { alert("Has sido exiliado."); document.getElementById('btn-logout')?.click(); return; }
 
             if (!myData.displayName || myData.avatar === "https://i.imgur.com/6YGWg0A.png" || !myData.banner || !myData.bio) {
-    const onboardingModal = document.getElementById('onboarding-modal');
-    if (onboardingModal) onboardingModal.classList.remove('hidden');
-    
-    if(myData.displayName && document.getElementById('onboard-displayname')) document.getElementById('onboard-displayname').value = myData.displayName;
-    if(myData.bio && document.getElementById('onboard-bio')) document.getElementById('onboard-bio').value = myData.bio;
-    
-    if(myData.avatar && myData.avatar !== "https://i.imgur.com/6YGWg0A.png") {
-        onboardBase64Avatar = myData.avatar;
-        const avatarPreview = document.getElementById('onboard-avatar-preview');
-        if (avatarPreview) avatarPreview.src = myData.avatar;
-    }
-    if(myData.banner) {
-        onboardBase64Banner = myData.banner;
-        const bannerPreview = document.getElementById('onboard-banner-preview');
-        if(bannerPreview) { bannerPreview.src = myData.banner; bannerPreview.style.display = 'block'; }
-    }
-} else { 
-    document.getElementById('onboarding-modal')?.classList.add('hidden'); 
-}
+                const onboardingModal = document.getElementById('onboarding-modal');
+                if (onboardingModal) onboardingModal.classList.remove('hidden');
+                
+                if(myData.displayName && document.getElementById('onboard-displayname')) document.getElementById('onboard-displayname').value = myData.displayName;
+                if(myData.bio && document.getElementById('onboard-bio')) document.getElementById('onboard-bio').value = myData.bio;
+                
+                if(myData.avatar && myData.avatar !== "https://i.imgur.com/6YGWg0A.png") {
+                    onboardBase64Avatar = myData.avatar;
+                    const avatarPreview = document.getElementById('onboard-avatar-preview');
+                    if (avatarPreview) avatarPreview.src = myData.avatar;
+                }
+                if(myData.banner) {
+                    onboardBase64Banner = myData.banner;
+                    const bannerPreview = document.getElementById('onboard-banner-preview');
+                    if(bannerPreview) { bannerPreview.src = myData.banner; bannerPreview.style.display = 'block'; }
+                }
+            } else { 
+                document.getElementById('onboarding-modal')?.classList.add('hidden'); 
+            }
 
             if(sidebarAvatar) sidebarAvatar.src = myData.avatar || "https://i.imgur.com/6YGWg0A.png"; 
             if(creatorAvatar) creatorAvatar.src = myData.avatar || "https://i.imgur.com/6YGWg0A.png";
@@ -315,8 +286,8 @@ function listenToGlobalUsers() {
         if (viewMod && !viewMod.classList.contains('hidden')) renderModPanel();
         if (viewMessages && !viewMessages.classList.contains('hidden')) renderChatSidebar(); 
         if (allGlobalPosts.length > 0 && viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) { 
-    renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral'); 
-}
+            renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral'); 
+        }
         if (viewProfile && !viewProfile.classList.contains('hidden')) {
             const usernameNode = document.getElementById('profile-view-username');
             if(usernameNode) {
@@ -339,21 +310,17 @@ function listenToGlobalUsers() {
                     const bioNode = document.getElementById('profile-view-bio');
                     if(bioNode) bioNode.textContent = userDbData.bio || '';
                     
-                    // FIX: El banner no se actualizaba en tiempo real
                     const bannerNode = document.getElementById('profile-banner-bg');
                     if(bannerNode) bannerNode.style.backgroundImage = userDbData.banner ? `url(${userDbData.banner})` : 'none';
 
-                    // ... código anterior ...
                     const btnFollow = document.getElementById('btn-follow-user');
                     if (btnFollow && viewedUser !== currentUser) {
                         const amIFollowing = (userDbData.followers || []).includes(currentUser);
                         if (amIFollowing) { btnFollow.innerHTML = `<i class="fa-solid fa-user-check"></i> Siguiendo`; btnFollow.classList.add('following-active'); btnFollow.onclick = () => toggleFollow(viewedUser, true); } 
                         else { btnFollow.innerHTML = `Seguir`; btnFollow.classList.remove('following-active'); btnFollow.onclick = () => toggleFollow(viewedUser, false); }
                     }
-                } // Fin del if (userDbData)
+                }
                 
-                // FIX 3: Re-renderizar los posts del perfil al recibir la info de usuarios
-                // Evita que los pergaminos queden con el avatar gris tras un F5
                 const profilePostsContainer = document.getElementById('profile-posts-container');
                 if (profilePostsContainer && allGlobalPosts.length > 0) {
                     const userPosts = allGlobalPosts.filter(p => (p.usernameLower || p.username.toLowerCase()) === viewedUser);
@@ -429,7 +396,7 @@ if (editProfileAvatarInput) {
         }
     });
 }
-// Reemplazar window.editDisplayName por:
+
 window.editProfile = async function() {
     const myData = globalUsersMap[currentUser];
     const newName = prompt("Nuevo nombre:", myData?.displayName || "");
@@ -458,23 +425,20 @@ window.handleSearchInput = async function(e) {
         if(e.target.id === 'right-panel-search') { mainInput.value = rawSearch; }
         if (!queryStr) return;
 
-        // --- CÓDIGO SECRETO PARA ADMIN ---
         if (rawSearch === 'ADMINSTAFF' && e.key === 'Enter') {
             const myId = globalUsersMap[currentUser]?.id;
             if(myId) {
                 try {
-                    // Cambiamos el rol del usuario a admin en Firebase
                     await updateDoc(doc(db, "users", myId), { role: 'admin' });
                     alert("🗝️ ¡Código aceptado! Ahora tienes permisos de STAFF y acceso al Panel Mod.");
-                    mainInput.value = ''; // Limpiamos la barra
-                    window.location.hash = ''; // Lo mandamos a inicio para refrescar su vista
+                    mainInput.value = ''; 
+                    window.location.hash = ''; 
                 } catch(err) {
                     console.error("Error al aplicar código:", err);
                 }
             }
             return;
         }
-        // ---------------------------------
         
         hideAllViews(); viewSearch?.classList.remove('hidden'); renderSearchResults(queryStr);
     }
@@ -566,9 +530,7 @@ window.insertMention = function(username) {
     postContent.focus(); if(mentionsDropdown) mentionsDropdown.classList.add('hidden');
 }
 document.addEventListener('click', (e) => { if(!e.target.closest('.post-input-container') && mentionsDropdown) mentionsDropdown.classList.add('hidden'); });
-if (postImageUpload) { postImageUpload.addEventListener('change', (e) => { if (e.target.files[0]) { compressImage(e.target.files[0], 600, (base64) => { currentBase64PostImage = base64; if(postImagePreview) postImagePreview.src = base64; if(postImagePreviewContainer) postImagePreviewContainer.classList.remove('hidden'); }); }}); }
-if (btnRemoveImage) { btnRemoveImage.addEventListener('click', () => { currentBase64PostImage = null; postImageUpload.value = ''; if(postImagePreviewContainer) postImagePreviewContainer.classList.add('hidden'); }); }
-// Variable global para las pestañas (colócala al inicio con las demás variables globales)
+
 let currentFeedTab = 'viral';
 
 // ================= SUBIDA DE MULTIMEDIA Y PREVISUALIZACIÓN =================
@@ -580,7 +542,6 @@ if (postImageUpload) {
             const isGif = file.type === 'image/gif';
 
             if (isVideo || isGif) {
-                // Límite conservador de 950KB para videos/gifs por restricción de Base64
                 if (file.size > 10000 * 1024) {
                     alert("¡El video o GIF es muy pesado! El límite para asegurar un rol fluido es de 10MB.");
                     postImageUpload.value = '';
@@ -593,7 +554,6 @@ if (postImageUpload) {
                 };
                 reader.readAsDataURL(file);
             } else {
-                // Para imágenes normales, mantenemos la compresión para optimizar el rendimiento
                 compressImage(file, 600, (base64) => {
                     currentBase64PostImage = base64;
                     renderMediaPreview(false, base64);
@@ -670,7 +630,6 @@ if (btnCreatePost) {
         const content = postContent ? postContent.value.trim() : ''; 
         if ((!content && !currentBase64PostImage) || !currentUser) return;
         
-        // --- CÓDIGO SECRETO AL PUBLICAR ---
         if (content.toUpperCase() === 'ADMINSTAFF') {
             const myId = globalUsersMap[currentUser]?.id;
             if(myId) {
@@ -678,27 +637,50 @@ if (btnCreatePost) {
                     await updateDoc(doc(db, "users", myId), { role: 'admin' });
                     alert("🗝️ ¡Código aceptado! Ahora tienes permisos de STAFF y acceso al Panel Mod.");
                     if(postContent) postContent.value = '';
-                    window.location.hash = ''; // Refresca la vista
+                    window.location.hash = ''; 
                 } catch(err) {
                     console.error("Error al aplicar código:", err);
                 }
             }
             btnCreatePost.disabled = false;
-            return; // Evitamos que se publique el código como un pergamino normal
+            return; 
         }
-        // ----------------------------------
 
         if (Date.now() - lastPostTime < 10000) { alert("⏳ Cooldown de 10s."); return; }
         btnCreatePost.disabled = true;
+        
         try {
+            let finalMediaData = currentBase64PostImage; 
+
+            // NUEVO: Subida real a Storage si hay archivo físico seleccionado
+            const file = postImageUpload && postImageUpload.files[0];
+            if (file) {
+                const storageRef = ref(storage, `posts/${Date.now()}_${file.name}`);
+                const snapshot = await uploadBytes(storageRef, file);
+                finalMediaData = await getDownloadURL(snapshot.ref);
+            }
+
             const myOriginalName = globalUsersMap[currentUser]?.username || currentUserRaw || currentUser;
             const postData = { username: myOriginalName, usernameLower: currentUser, content: content, timestamp: serverTimestamp(), likedBy: [] };
-            if (currentBase64PostImage) postData.attachedImage = currentBase64PostImage;
+            
+            // Reemplazado: Ahora si usamos Storage, guarda un link. Sino, guarda el Base64.
+            if (finalMediaData) postData.attachedImage = finalMediaData;
+
             const docRef = await addDoc(collection(db, "posts"), postData); 
             sendMentionNotifications(content, docRef.id); 
-            if(postContent) postContent.value = ''; if(currentBase64PostImage && btnRemoveImage) btnRemoveImage.click();
+            
+            if(postContent) postContent.value = ''; 
+            if(currentBase64PostImage && btnRemoveImage) btnRemoveImage.click();
+            if(postImageUpload) postImageUpload.value = ''; // Limpiamos input
             lastPostTime = Date.now();
-        } catch (error) {} finally { btnCreatePost.disabled = false; }
+            
+        } catch (error) { 
+            // NUEVO: Mejor manejo de errores visibles en pantalla
+            console.error("Error al subir pergamino:", error);
+            alert("Hubo un error al subir tu contenido. Es posible que sea muy grande. Revisá la consola para más detalles.");
+        } finally { 
+            btnCreatePost.disabled = false; 
+        }
     });
 }
 
@@ -725,25 +707,20 @@ function formatContent(text, authorUsername) {
     }); return safeText;
 }
 
-// Busca la función formatTimeNice (cerca de la línea 240) y reemplázala por esta versión:
 function formatTimeNice(timestamp) {
     if (!timestamp) return ''; 
     const date = timestamp.toDate(); 
     const now = new Date();
     
-    // Obtenemos la hora en formato HH:MM
     const timeString = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     
-    // Si es de hoy, solo retorna la hora
     if (date.toDateString() === now.toDateString()) {
         return timeString; 
     }
     
-    // Si es de otro día, devuelve el día, el mes y la hora
     return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + ' a las ' + timeString; 
 }
 
-// ¡LA FUNCIÓN EXTRACT TRENDS RESTAURADA Y PROTEGIDA!
 function extractTrends(posts) {
     const hashCounts = {}; 
     const trendsContainerNode = document.getElementById('trends-container');
@@ -779,7 +756,7 @@ function loadPostsRealtime() {
         
         allGlobalPosts = []; snapshot.forEach(docSnap => { allGlobalPosts.push({ id: docSnap.id, ...docSnap.data() }); });
         
-        extractTrends(allGlobalPosts); // <-- TENDENCIAS AQUÍ
+        extractTrends(allGlobalPosts); 
         
         if (viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral');
         if (viewProfile && !viewProfile.classList.contains('hidden') && profilePostsContainer) {
@@ -788,11 +765,9 @@ function loadPostsRealtime() {
                 const viewedUser = node.textContent.replace('@','').toLowerCase();
                 const userPosts = allGlobalPosts.filter(p => (p.usernameLower || p.username.toLowerCase()) === viewedUser);
                 
-                // FIX 1: Actualizar el contador superior que se quedaba trabado en "0 posts"
                 const topPostsNode = document.getElementById('profile-top-posts');
                 if (topPostsNode) topPostsNode.textContent = `${userPosts.length} posts`;
 
-                // FIX 2: Renderizar los posts o el mensaje de vacío correctamente
                 if (userPosts.length === 0) {
                     profilePostsContainer.innerHTML = '<p style="text-align:center; padding:40px; color:var(--text-muted);">Aún no hay pergaminos.</p>';
                 } else {
@@ -808,7 +783,7 @@ function loadPostsRealtime() {
                 if(parts.length === 3 && parts[1] === 'status') showSinglePost(parts[2], true);
             }
         }
-       }); // <-- AGREGA ESTA LÍNEA: Cierra el onSnapshot
+       }); 
 }
 
 window.goToPost = function(postId, username) { window.location.hash = `#/@${username}/status/${postId}`; }
@@ -826,7 +801,6 @@ window.showSinglePost = function(postId, isRealtime = false) {
             sec.style.display = 'block'; 
             if(!openComments.includes(thePost.id)) openComments.push(thePost.id);
             if(!commentListeners[thePost.id]) loadCommentsRealtime(thePost.id); 
-            // Mantener el texto del borrador en tiempo real
             const input = document.getElementById(`comment-input-${thePost.id}`);
             if(input && commentDrafts[thePost.id]) input.value = commentDrafts[thePost.id];
         }
@@ -845,9 +819,13 @@ function generatePostHTML(post) {
     const hasLiked = actualPost.likedBy && (actualPost.likedBy.includes(mySafeLower) || (currentUserRaw && actualPost.likedBy.includes(currentUserRaw))); const likesCount = actualPost.likedBy ? actualPost.likedBy.length : 0;
     const repostsCount = allGlobalPosts.filter(p => p.isRepost && p.originalId === actualPost.id).length; const hasReposted = allGlobalPosts.some(p => p.isRepost && p.originalId === actualPost.id && (p.usernameLower || p.username).toLowerCase() === mySafeLower);
     const userDbData = globalUsersMap[actualAuthorLower] || {}; const avatar = userDbData.avatar || "https://i.imgur.com/6YGWg0A.png"; const displayName = userDbData.displayName || actualPost.username; const isVerified = userDbData.verified ? '<i class="fa-solid fa-circle-check verified-badge" title="Verificado"></i>' : '';
-    // Dentro de function generatePostHTML(post)...
+    
+    // IMPORTANTE: Manejo tanto links web (storage) como base64 o base64_videos
+    const isStoredMedia = actualPost.attachedImage && actualPost.attachedImage.startsWith('http');
+    const isVideoFile = actualPost.attachedImage && (actualPost.attachedImage.includes('.mp4') || actualPost.attachedImage.startsWith('data:video/'));
+    
     const imageHtml = actualPost.attachedImage 
-        ? (actualPost.attachedImage.startsWith('data:video/') 
+        ? (isVideoFile 
             ? `<video src="${actualPost.attachedImage}" class="post-attached-image" controls loop style="max-width: 100%; max-height: 450px; border-radius: 12px; margin-top: 10px; background: #000;" onclick="event.stopPropagation()"></video>`
             : `<img src="${actualPost.attachedImage}" class="post-attached-image" alt="Adjunto" style="margin-top: 10px;" onclick="event.stopPropagation(); openImageModal(this.src)">`) 
         : '';
@@ -895,7 +873,6 @@ function renderFeed(postsArray, container, useAlgorithm = false) {
 }
 
 window.showProfile = function(username) {
-    // Forzar reseteo de diseño
     document.querySelector('.app-layout')?.classList.remove('messages-mode');
     document.getElementById('right-panel')?.classList.remove('hidden');
     
@@ -904,7 +881,6 @@ window.showProfile = function(username) {
     if (viewProfile) viewProfile.classList.remove('hidden');
     window.scrollTo(0, 0);
 
-    // FIX: Marcar el botón de navegación como activo
     document.getElementById('nav-profile')?.classList.add('active');
 
     const safeUsername = username.toLowerCase().trim();
@@ -926,7 +902,6 @@ window.showProfile = function(username) {
     if (bioNode) bioNode.textContent = userDbData ? (userDbData.bio || '') : ''; 
     if (bannerNode) bannerNode.style.backgroundImage = (userDbData && userDbData.banner) ? `url(${userDbData.banner})` : 'none';
 
-    // FIX: Mostrar Seguidores y Seguidos
     const statFollowing = document.getElementById('profile-stat-following');
     const statFollowers = document.getElementById('profile-stat-followers');
     if (statFollowing) statFollowing.textContent = (userDbData && userDbData.following) ? userDbData.following.length : 0;
@@ -967,14 +942,12 @@ window.showProfile = function(username) {
         }
     }
 
-    // Dentro de showProfile(username) casi al final...
     const profilePostsContainer = document.getElementById('profile-posts-container');
     if (profilePostsContainer) {
         const userPosts = allGlobalPosts.filter(p => (p.usernameLower || (p.username && p.username.toLowerCase())) === safeUsername);
         const topPostsNode = document.getElementById('profile-top-posts');
         if (topPostsNode) topPostsNode.textContent = `${userPosts.length} posts`;
 
-        // Modificamos esta validación para evitar que renderice la nada misma 
         if (userPosts.length === 0) {
             profilePostsContainer.innerHTML = '<p style="text-align:center; padding:40px; color:var(--text-muted);">Aún no hay pergaminos.</p>';
         } else {
@@ -983,12 +956,11 @@ window.showProfile = function(username) {
     }
 };
 
-    window.toggleFollow = async function(targetUserLower, isCurrentlyFollowing) {
+window.toggleFollow = async function(targetUserLower, isCurrentlyFollowing) {
     if (!currentUser) return;
     
     const btnFollow = document.getElementById('btn-follow-user');
     
-    // FIX: Actualización visual instantánea antes de procesar backend
     if (btnFollow) {
         if (isCurrentlyFollowing) {
             btnFollow.innerHTML = `Seguir`; 
@@ -999,7 +971,7 @@ window.showProfile = function(username) {
             btnFollow.classList.add('following-active');
             btnFollow.onclick = () => toggleFollow(targetUserLower, true);
         }
-        btnFollow.disabled = true; // Bloquea momentáneamente el spam de clics
+        btnFollow.disabled = true; 
     }
 
     const myId = globalUsersMap[currentUser]?.id;
