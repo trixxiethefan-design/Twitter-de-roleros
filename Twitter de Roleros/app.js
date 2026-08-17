@@ -581,8 +581,8 @@ if (postImageUpload) {
 
             if (isVideo || isGif) {
                 // Límite conservador de 950KB para videos/gifs por restricción de Base64
-                if (file.size > 950 * 1024) {
-                    alert("¡El video o GIF es muy pesado! El límite para asegurar un rol fluido es de 950KB.");
+                if (file.size > 10000 * 1024) {
+                    alert("¡El video o GIF es muy pesado! El límite para asegurar un rol fluido es de 10MB.");
                     postImageUpload.value = '';
                     return;
                 }
