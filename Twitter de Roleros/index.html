@@ -66,81 +66,76 @@
     </div>
 
     <div id="app-view" class="app-layout hidden">
-        <aside class="sidebar">
-    <!-- Le agregamos window.showFeedView() al onclick para forzar que vuelva al inicio -->
-    <div class="logo" onclick="window.showFeedView(); window.location.hash=''" style="cursor:pointer;">
-        <i class="fa-solid fa-dice-d20" style="font-size: 2rem;"></i>
-    </div>
-    <nav>
-        <!-- Actualizamos el onclick del nav-home -->
-        <a href="javascript:void(0)" id="nav-home" class="active" onclick="window.showFeedView(); window.location.hash=''" title="Inicio">
-            <i class="fa-solid fa-house"></i> <span class="nav-text">Inicio</span>
-        </a>
+        <!-- Menú lateral modificado para soportar la nueva ruta #feed -->
+    <aside class="sidebar">
+        <div class="logo" onclick="window.showFeedView()" style="cursor:pointer;">
+            <i class="fa-solid fa-dice-d20" style="font-size: 2rem;"></i>
+        </div>
+        <nav>
+            <a href="javascript:void(0)" id="nav-home" class="active" onclick="window.showFeedView()" title="Inicio">
+                <i class="fa-solid fa-house"></i> <span class="nav-text">Inicio</span>
+            </a>
+            <a href="javascript:void(0)" id="nav-search" onclick="showSearchView()" title="Buscar">
+                <i class="fa-solid fa-magnifying-glass"></i> <span class="nav-text">Buscar</span>
+            </a>
+            <a href="javascript:void(0)" id="nav-notifs" onclick="showNotifsView()" title="Notificaciones">
+                <i class="fa-solid fa-bell"></i> <span class="nav-text">Notificaciones</span> 
+                <div id="notif-badge" class="badge-notif hidden">0</div>
+            </a>
+            <a href="javascript:void(0)" id="nav-threads" onclick="showThreadsView()" title="Hilos">
+                <i class="fa-solid fa-layer-group"></i> <span class="nav-text">Hilos</span>
+            </a>
+            <a href="javascript:void(0)" id="nav-messages" onclick="showMessagesView()" title="Mensajes">
+                <i class="fa-solid fa-envelope"></i> <span class="nav-text">Mensajes</span> 
+                <div id="msg-badge" class="badge-notif hidden">0</div>
+            </a>
+            <a href="javascript:void(0)" id="nav-profile" onclick="goToMyProfile()" title="Perfil">
+                <i class="fa-solid fa-user"></i> <span class="nav-text">Perfil</span>
+            </a>
+            <a href="javascript:void(0)" id="nav-mod" class="hidden" onclick="showModView()" title="Mod">
+                <i class="fa-solid fa-shield-halved"></i> <span class="nav-text">Panel Mod</span>
+            </a>
+        </nav>
         
-        <!-- Nuevo botón directo para buscar posteos y usuarios -->
-        <a href="javascript:void(0)" id="nav-search" onclick="showSearchView()" title="Buscar">
-            <i class="fa-solid fa-magnifying-glass"></i> <span class="nav-text">Buscar</span>
-        </a>
-        
-        <a href="javascript:void(0)" id="nav-notifs" onclick="showNotifsView()" title="Notificaciones">
-            <i class="fa-solid fa-bell"></i> <span class="nav-text">Notificaciones</span> 
-            <div id="notif-badge" class="badge-notif hidden">0</div>
-        </a>
-        
-        <a href="javascript:void(0)" id="nav-threads" onclick="showThreadsView()" title="Hilos">
-            <i class="fa-solid fa-layer-group"></i> <span class="nav-text">Hilos</span>
-        </a>
-        
-        <a href="javascript:void(0)" id="nav-messages" onclick="showMessagesView()" title="Mensajes">
-            <i class="fa-solid fa-envelope"></i> <span class="nav-text">Mensajes</span> 
-            <div id="msg-badge" class="badge-notif hidden">0</div>
-        </a>
-        
-        <a href="javascript:void(0)" id="nav-profile" onclick="goToMyProfile()" title="Perfil">
-            <i class="fa-solid fa-user"></i> <span class="nav-text">Perfil</span>
-        </a>
-        
-        <a href="javascript:void(0)" id="nav-mod" class="hidden" onclick="showModView()" title="Mod">
-            <i class="fa-solid fa-shield-halved"></i> <span class="nav-text">Panel Mod</span>
-        </a>
-    </nav>
-    <!-- ... Resto del panel lateral ... -->
-            <div class="user-profile" onclick="goToMyProfile()" style="cursor:pointer;">
-                <div class="avatar"><img id="sidebar-avatar" src="https://i.imgur.com/6YGWg0A.png" alt="Tú"></div>
-                <div class="user-info">
-                    <span id="current-displayname" style="font-weight:bold; font-size:0.95rem;">Cargando...</span>
-                    <span id="current-username" style="font-size:0.85rem; color:var(--text-muted);">@usuario</span>
-                </div>
-                <button id="btn-logout" title="Cerrar Sesión"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+        <div class="user-profile" onclick="goToMyProfile()" style="cursor:pointer;">
+            <div class="avatar"><img id="sidebar-avatar" src="https://i.imgur.com/6YGWg0A.png" alt="Tú"></div>
+            <div class="user-info">
+                <span id="current-displayname" style="font-weight:bold; font-size:0.95rem;">Cargando...</span>
+                <span id="current-username" style="font-size:0.85rem; color:var(--text-muted);">@usuario</span>
             </div>
-        </aside>
+            <button id="btn-logout" title="Cerrar Sesión"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+        </div>
+    </aside>
 
-        <main class="feed">
+    <main class="feed">
+        <!-- Feed actualizado con las Tabs de Viral y Nuevos -->
+        <div id="view-feed">
+            <header class="feed-header" style="justify-content: space-between; border-bottom: none; padding-bottom: 5px;">
+                <h2>Inicio</h2>
+                <button id="btn-nuke-feed" class="btn-small btn-danger hidden" onclick="nukeFeed()"><i class="fa-solid fa-bomb"></i> Purgar</button>
+            </header>
             
-            <div id="view-feed">
-                <header class="feed-header" style="justify-content: space-between;">
-                    <h2>Inicio</h2>
-                    <button id="btn-nuke-feed" class="btn-small btn-danger hidden" onclick="nukeFeed()"><i class="fa-solid fa-bomb"></i> Purgar</button>
-                </header>
+            <div class="feed-tabs" style="display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 15px;">
+                <button id="tab-feed-viral" class="feed-tab active" onclick="setFeedTab('viral')" style="flex:1; background:none; color:var(--text-main); border:none; padding:12px; cursor:pointer; font-weight:bold; border-bottom: 3px solid var(--accent-primary); transition: 0.2s;">Viral</button>
+                <button id="tab-feed-nuevos" class="feed-tab" onclick="setFeedTab('nuevos')" style="flex:1; background:none; color:var(--text-muted); border:none; padding:12px; cursor:pointer; font-weight:bold; border-bottom: 3px solid transparent; transition: 0.2s;">Nuevos</button>
+            </div>
 
-                <div class="post-creator">
-                    <div class="avatar"><img id="creator-avatar" src="https://i.imgur.com/6YGWg0A.png" alt="Tú"></div>
-                    <div class="post-input-container" style="position:relative;">
-                        <textarea id="post-content" placeholder="¿Qué rol tienes en mente?"></textarea>
-                        <div id="mentions-dropdown" class="mentions-dropdown hidden"></div>
-                        <div id="post-image-preview-container" class="hidden">
-                            <img id="post-image-preview" src="" alt="Preview">
-                            <button id="btn-remove-image"><i class="fa-solid fa-xmark"></i></button>
-                        </div>
-                        <div class="post-actions">
-                            <label for="post-image-upload" class="upload-img-btn" title="Adjuntar imagen"><i class="fa-solid fa-image"></i></label>
-                            <input type="file" id="post-image-upload" accept="image/*" class="hidden">
-                            <button id="btn-create-post" class="btn-primary btn-post">Postear</button>
-                        </div>
+            <div class="post-creator">
+                <div class="avatar"><img id="creator-avatar" src="https://i.imgur.com/6YGWg0A.png" alt="Tú"></div>
+                <div class="post-input-container" style="position:relative;">
+                    <textarea id="post-content" placeholder="¿Qué rol tienes en mente?"></textarea>
+                    <div id="mentions-dropdown" class="mentions-dropdown hidden"></div>
+                    <div id="post-image-preview-container" class="hidden"></div>
+                    <div class="post-actions">
+                        <!-- Botón actualizado para aceptar videos/gifs -->
+                        <label for="post-image-upload" class="upload-img-btn" title="Adjuntar imagen, video o gif"><i class="fa-solid fa-photo-film"></i></label>
+                        <input type="file" id="post-image-upload" accept="image/*,video/mp4,video/webm" class="hidden">
+                        <button id="btn-create-post" class="btn-primary btn-post">Postear</button>
                     </div>
                 </div>
-                <div id="posts-container"></div>
             </div>
+            <div id="posts-container"></div>
+        </div>
 
             <div id="view-search" class="hidden">
                 <header class="feed-header" style="gap: 15px;">
