@@ -630,6 +630,8 @@ function loadPostsRealtime() {
                 if(parts.length === 3 && parts[1] === 'status') showSinglePost(parts[2], true);
             }
         }
+       }); // <-- AGREGA ESTA LÍNEA: Cierra el onSnapshot
+}
 
 window.goToPost = function(postId, username) { window.location.hash = `#/@${username}/status/${postId}`; }
 window.copyPostLink = function(postId, username) { const url = window.location.origin + window.location.pathname + `#/@${username}/status/${postId}`; navigator.clipboard.writeText(url).then(() => alert('¡Link copiado!')); }
