@@ -176,7 +176,7 @@
                             <div class="profile-action-btns">
                                 <input type="file" id="edit-profile-avatar" accept="image/*" class="hidden">
                                 <label for="edit-profile-avatar" id="btn-edit-avatar" class="btn-outline hidden" style="cursor:pointer;"><i class="fa-solid fa-camera"></i> Cambiar Foto</label>
-                                <button id="btn-edit-name" class="btn-outline hidden" onclick="editDisplayName()"><i class="fa-solid fa-pen"></i></button>
+                                <button id="btn-edit-name" class="btn-outline hidden" onclick="editProfile()" title="Editar Perfil"><i class="fa-solid fa-pen"></i></button>
                                 
                                 <button id="btn-share-profile" class="btn-outline" title="Copiar Link"><i class="fa-solid fa-link"></i></button>
                                 <button id="btn-message-user" class="btn-outline hidden"><i class="fa-solid fa-envelope"></i></button>
@@ -188,7 +188,7 @@
                             <span id="profile-view-displayname">Usuario</span>
                             <span id="profile-view-verified"></span>
                         </h3>
-                        <p id="profile-view-username" style="color:var(--text-muted); font-size:0.95rem; margin-bottom:15px;">@usuario</p>
+                        <p id="profile-view-bio" style="font-size:0.95rem; margin-bottom:15px; white-space: pre-wrap; color: var(--text-main);"></p>
                         
                         <div class="profile-follow-stats">
                             <div><span id="profile-stat-following" class="stat-number">0</span> Siguiendo</div>

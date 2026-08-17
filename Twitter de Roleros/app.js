@@ -112,10 +112,36 @@ function handleRouting() {
         } else {
             window.showProfile(userToView);
         }
+    } else if (hash === '#threads') {
+        hideAllViews(); viewThreads?.classList.remove('hidden'); document.getElementById('nav-threads')?.classList.add('active'); 
+        document.getElementById('thread-list-container')?.classList.remove('hidden'); document.getElementById('active-thread-container')?.classList.add('hidden'); loadThreadsList(); 
+    } else if (hash === '#messages') {
+        hideAllViews(); viewMessages?.classList.remove('hidden'); document.getElementById('nav-messages')?.classList.add('active');
+        document.querySelector('.app-layout')?.classList.add('messages-mode'); document.getElementById('right-panel')?.classList.add('hidden');
+        document.getElementById('chat-area')?.classList.add('hidden'); document.getElementById('chat-placeholder')?.classList.remove('hidden');
+        renderChatSidebar();
+    } else if (hash === '#notifs') {
+        hideAllViews(); viewNotifs?.classList.remove('hidden'); document.getElementById('nav-notifs')?.classList.add('active'); 
+        const myId = globalUsersMap[currentUser]?.id; if (myId) updateDoc(doc(db, "users", myId), { unreadNotifs: 0 }); 
+    } else if (hash === '#mod') {
+        hideAllViews(); viewMod?.classList.remove('hidden'); document.getElementById('nav-mod')?.classList.add('active'); 
+        const searchInput = document.getElementById('mod-search-input'); renderModPanel(searchInput ? searchInput.value.toLowerCase() : ""); 
+    } else if (hash === '#search') {
+        hideAllViews(); const vs = document.getElementById('view-search'); if (vs) vs.classList.remove('hidden'); document.getElementById('nav-search')?.classList.add('active'); 
     } else if (hash === '' || hash === '#') {
-        window.showFeedView();
+        hideAllViews(); viewFeed?.classList.remove('hidden'); document.getElementById('nav-home')?.classList.add('active'); 
+        if(allGlobalPosts.length > 0 && postsContainer) renderFeed(allGlobalPosts, postsContainer, true);
     }
 }
+
+// Ahora los botones solo cambian el hash, obligando al sistema a navegar 100% seguro.
+window.showFeedView = function() { if(window.location.hash !== '') window.location.hash = ''; else handleRouting(); }
+window.goToMyProfile = function() { if(window.location.hash !== `#/@${currentUser}`) window.location.hash = `#/@${currentUser}`; else handleRouting(); }
+window.showThreadsView = function() { if(window.location.hash !== '#threads') window.location.hash = '#threads'; else handleRouting(); }
+window.showModView = function() { if(window.location.hash !== '#mod') window.location.hash = '#mod'; else handleRouting(); }
+window.showNotifsView = function() { if(window.location.hash !== '#notifs') window.location.hash = '#notifs'; else handleRouting(); }
+window.showMessagesView = function() { if(window.location.hash !== '#messages') window.location.hash = '#messages'; else handleRouting(); }
+window.showSearchView = function() { if(window.location.hash !== '#search') window.location.hash = '#search'; else handleRouting(); }
 
 function showAuth() { 
     authView?.classList.remove('hidden'); 
@@ -251,6 +277,18 @@ function listenToGlobalUsers() {
                 if (userDbData) {
                     const statFollowing = document.getElementById('profile-stat-following'); const statFollowers = document.getElementById('profile-stat-followers');
                     if (statFollowing) statFollowing.textContent = (userDbData.following || []).length; if (statFollowers) statFollowers.textContent = (userDbData.followers || []).length;
+                    
+                    // Asegurar que nombre, foto, verificado y biografía NO desaparezcan:
+                    const avatarNode = document.getElementById('profile-view-avatar');
+                    if(avatarNode) avatarNode.src = userDbData.avatar || "https://i.imgur.com/6YGWg0A.png";
+                    const displaynameNode = document.getElementById('profile-view-displayname');
+                    if(displaynameNode) displaynameNode.textContent = userDbData.displayName || userDbData.username;
+                    const verifiedNode = document.getElementById('profile-view-verified');
+                    if(verifiedNode) verifiedNode.innerHTML = userDbData.verified ? '<i class="fa-solid fa-circle-check verified-badge"></i>' : '';
+                    const topNameNode = document.getElementById('profile-top-name');
+                    if(topNameNode) topNameNode.textContent = userDbData.displayName || userDbData.username;
+                    const bioNode = document.getElementById('profile-view-bio');
+                    if(bioNode) bioNode.textContent = userDbData.bio || '';
 
                     const btnFollow = document.getElementById('btn-follow-user');
                     if (btnFollow && viewedUser !== currentUser) {
@@ -277,9 +315,21 @@ if (btnSaveOnboarding) {
         } catch(e) {} finally { btnSaveOnboarding.disabled = false; }
     });
 }
-window.editDisplayName = async function() {
-    const newName = prompt("Nuevo nombre:", globalUsersMap[currentUser]?.displayName || "");
-    if(newName && newName.trim() !== "") { try { await updateDoc(doc(db, "users", globalUsersMap[currentUser].id), { displayName: newName.trim() }); } catch(e){} }
+// Reemplazar window.editDisplayName por:
+window.editProfile = async function() {
+    const myData = globalUsersMap[currentUser];
+    const newName = prompt("Nuevo nombre:", myData?.displayName || "");
+    if(newName !== null) {
+        const newBio = prompt("Tu descripción (Bio):", myData?.bio || "");
+        if(newBio !== null) {
+            try { 
+                await updateDoc(doc(db, "users", myData.id), { 
+                    displayName: newName.trim() !== "" ? newName.trim() : myData.username,
+                    bio: newBio.trim()
+                }); 
+            } catch(e){}
+        }
+    }
 }
 
 // ================= BUSCADOR REAL =================
@@ -572,23 +622,34 @@ function loadPostsRealtime() {
                 renderFeed(userPosts, profilePostsContainer, false);
             }
         }
-        if (viewSinglePost && !viewSinglePost.classList.contains('hidden')) { const parts = window.location.hash.split('/'); if(parts.length === 3 && parts[1] === 'status') showSinglePost(parts[2]); }
-        if (viewSearch && !viewSearch.classList.contains('hidden')) { const mainInput = document.getElementById('main-search-input'); if(mainInput) renderSearchResults(mainInput.value.toLowerCase().trim()); }
-        
-        if (activeId) { const el = document.getElementById(activeId); if (el) { el.focus(); if(el.value) { const val = el.value; el.value = ''; el.value = val; } } }
-    });
-}
+        if (viewSinglePost && !viewSinglePost.classList.contains('hidden')) { 
+            const hash = window.location.hash;
+            if (hash.startsWith('#/@')) {
+                const path = hash.substring(2);
+                const parts = path.split('/');
+                if(parts.length === 3 && parts[1] === 'status') showSinglePost(parts[2], true);
+            }
+        }
 
 window.goToPost = function(postId, username) { window.location.hash = `#/@${username}/status/${postId}`; }
 window.copyPostLink = function(postId, username) { const url = window.location.origin + window.location.pathname + `#/@${username}/status/${postId}`; navigator.clipboard.writeText(url).then(() => alert('¡Link copiado!')); }
 
-window.showSinglePost = function(postId) {
-    hideAllViews(); if(viewSinglePost) viewSinglePost.classList.remove('hidden');
+window.showSinglePost = function(postId, isRealtime = false) {
+    if (!isRealtime) hideAllViews(); 
+    if(viewSinglePost) viewSinglePost.classList.remove('hidden');
     const container = document.getElementById('single-post-container'); if(!container) return;
     const thePost = allGlobalPosts.find(p => p.id === postId);
     if(thePost) {
         container.innerHTML = generatePostHTML(thePost);
-        const sec = document.getElementById(`comments-${thePost.id}`); if(sec) { sec.style.display = 'block'; loadCommentsRealtime(thePost.id); }
+        const sec = document.getElementById(`comments-${thePost.id}`); 
+        if(sec) { 
+            sec.style.display = 'block'; 
+            if(!openComments.includes(thePost.id)) openComments.push(thePost.id);
+            if(!commentListeners[thePost.id]) loadCommentsRealtime(thePost.id); 
+            // Mantener el texto del borrador en tiempo real
+            const input = document.getElementById(`comment-input-${thePost.id}`);
+            if(input && commentDrafts[thePost.id]) input.value = commentDrafts[thePost.id];
+        }
     } else { container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--text-muted);">El pergamino ya no existe.</p>'; }
 }
 
@@ -662,7 +723,15 @@ window.showProfile = function(username) {
     const avatarNode = document.getElementById('profile-view-avatar');
     const verifiedNode = document.getElementById('profile-view-verified');
     const topNameNode = document.getElementById('profile-top-name');
+    const topNameNode = document.getElementById('profile-top-name');
+    const bioNode = document.getElementById('profile-view-bio'); // Añadido para la bio
     
+    if (usernameNode) usernameNode.textContent = '@' + (userDbData ? userDbData.username : username);
+    if (displaynameNode) displaynameNode.textContent = userDbData ? (userDbData.displayName || userDbData.username) : username;
+    if (topNameNode) topNameNode.textContent = userDbData ? (userDbData.displayName || userDbData.username) : 'Perfil';
+    if (avatarNode) avatarNode.src = (userDbData && userDbData.avatar) ? userDbData.avatar : "https://i.imgur.com/6YGWg0A.png";
+    if (verifiedNode) verifiedNode.innerHTML = (userDbData && userDbData.verified) ? '<i class="fa-solid fa-circle-check verified-badge"></i>' : '';
+    if (bioNode) bioNode.textContent = userDbData ? (userDbData.bio || '') : ''; // Añadido para la bio
     if (usernameNode) usernameNode.textContent = '@' + (userDbData ? userDbData.username : username);
     if (displaynameNode) displaynameNode.textContent = userDbData ? (userDbData.displayName || userDbData.username) : username;
     if (topNameNode) topNameNode.textContent = userDbData ? (userDbData.displayName || userDbData.username) : 'Perfil';
@@ -795,7 +864,14 @@ function renderChatMessagesHTML(otherUserLower) { const container = document.get
 window.sendPrivateMessage = async function() { const input = document.getElementById('chat-input'); if(!input) return; const text = input.value.trim(); if(!text || !currentChatUser || !currentUser) return; const chatId = [currentUser, currentChatUser].sort().join('_'); const myId = globalUsersMap[currentUser]?.id; const receiverId = globalUsersMap[currentChatUser]?.id; try { input.value = ''; if(myId) updateDoc(doc(db, "users", myId), { [`chatActivity.${currentChatUser}`]: serverTimestamp() }); if(receiverId) updateDoc(doc(db, "users", receiverId), { [`chatActivity.${currentUser}`]: serverTimestamp(), [`unreadFrom.${currentUser}`]: increment(1), unreadMessages: increment(1) }); await addDoc(collection(db, `chats/${chatId}/messages`), { sender: currentUser, text: text, timestamp: serverTimestamp() }); setDoc(doc(db, "chats", chatId), { ['typing_' + currentUser]: false }, { merge: true }); } catch(e) {} }
 window.deleteDM = async function(chatId, msgId) { if(confirm("¿Borrar?")) { try { await deleteDoc(doc(db, `chats/${chatId}/messages`, msgId)); } catch(e){} } }
 if(document.getElementById('chat-input')) { document.getElementById('chat-input').addEventListener('keydown', (e) => { if(e.key === 'Enter') sendPrivateMessage(); }); }
-window.startChatWith = async function(otherUsernameRaw) { const otherUserLower = otherUsernameRaw.toLowerCase(); const myId = globalUsersMap[currentUser]?.id; const otherId = globalUsersMap[otherUserLower]?.id; if(myId) await updateDoc(doc(db, "users", myId), { activeChats: arrayUnion(otherUserLower) }); if(otherId) await updateDoc(doc(db, "users", otherId), { activeChats: arrayUnion(currentUser) }); showMessagesView(); openChatWith(otherUserLower); }
+window.startChatWith = async function(otherUsernameRaw) { 
+    const otherUserLower = otherUsernameRaw.toLowerCase(); 
+    const myId = globalUsersMap[currentUser]?.id; const otherId = globalUsersMap[otherUserLower]?.id; 
+    if(myId) await updateDoc(doc(db, "users", myId), { activeChats: arrayUnion(otherUserLower) }); 
+    if(otherId) await updateDoc(doc(db, "users", otherId), { activeChats: arrayUnion(currentUser) }); 
+    window.showMessagesView();
+    setTimeout(() => { openChatWith(otherUserLower); }, 50); 
+}
 
 // ================= PANEL MOD =================
 window.filterModUsers = function() { const inp = document.getElementById('mod-search-input'); if(inp) renderModPanel(inp.value.toLowerCase()); }
