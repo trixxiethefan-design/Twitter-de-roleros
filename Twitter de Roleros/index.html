@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RolerNet</title>
+    
+    <!-- Agrega esta línea para el ícono de la pestaña y eliminar el error 404 -->
+    <link rel="icon" href="https://i.imgur.com/6YGWg0A.png" type="image/png">
+    
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+
+    <div id="onboarding-modal" class="image-modal hidden" style="z-index: 10000; backdrop-filter: blur(10px);">
+        <div class="auth-box" style="position: relative;">
+            <h2 style="color: var(--text-main); margin-bottom: 10px;">¡Completa tu Perfil!</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">Para entrar, es obligatorio tener una foto y un Nombre de Rolero.</p>
+            
+            <div style="display:flex; justify-content:center; margin-bottom: 20px;">
+                <label for="onboard-avatar" class="avatar-label">
+                    <img id="onboard-avatar-preview" src="https://i.imgur.com/6YGWg0A.png" alt="Avatar">
+                    <span>Sube tu foto *</span>
+                </label>
+                <input type="file" id="onboard-avatar" accept="image/*" class="hidden">
+            </div>
+
+            <input type="text" id="onboard-displayname" placeholder="Tu Nombre o Apodo (Ej: Trixxie)" style="width: 100%; padding: 12px; margin-bottom: 15px; background: var(--bg-dark); border: 1px solid var(--border-color); color: white; border-radius: 4px; outline: none;">
+            
+            <button id="btn-save-onboarding" class="btn-primary" style="width: 100%; padding: 12px;">Guardar y Entrar</button>
+        </div>
+    </div>
+
+    <div id="image-modal" class="image-modal hidden" onclick="closeImageModal()">
+        <span class="close-modal"><i class="fa-solid fa-xmark"></i></span>
+        <img id="modal-image" src="" alt="Zoom">
+    </div>
+
+    <div id="auth-view" class="auth-container">
+        <div class="auth-box">
+            <h1><i class="fa-solid fa-dice-d20" style="color:var(--accent-primary);"></i></h1>
+            <h2 style="margin: 20px 0;">Entra al Rol</h2>
+            <div class="auth-tabs">
+                <button id="tab-login" class="active">Iniciar Sesión</button>
+                <button id="tab-register">Registrarse</button>
+            </div>
+            
+            <form id="auth-form">
+                <input type="text" id="auth-username" placeholder="@usuario (sin espacios)" required autocomplete="off">
+                <input type="password" id="auth-password" placeholder="Contraseña" required>
+                <button type="submit" id="auth-submit" class="btn-primary">Entrar</button>
+                <p id="auth-error" class="error-msg hidden"></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="app-view" class="app-layout hidden">
+        <aside class="sidebar">
+    <!-- Le agregamos window.showFeedView() al onclick para forzar que vuelva al inicio -->
+    <div class="logo" onclick="window.showFeedView(); window.location.hash=''" style="cursor:pointer;">
+        <i class="fa-solid fa-dice-d20" style="font-size: 2rem;"></i>
+    </div>
+    <nav>
+        <!-- Actualizamos el onclick del nav-home -->
+        <a href="javascript:void(0)" id="nav-home" class="active" onclick="window.showFeedView(); window.location.hash=''" title="Inicio">
+            <i class="fa-solid fa-house"></i> <span class="nav-text">Inicio</span>
+        </a>
+        
+        <!-- Nuevo botón directo para buscar posteos y usuarios -->
+        <a href="javascript:void(0)" id="nav-search" onclick="showSearchView()" title="Buscar">
+            <i class="fa-solid fa-magnifying-glass"></i> <span class="nav-text">Buscar</span>
+        </a>
+        
+        <a href="javascript:void(0)" id="nav-notifs" onclick="showNotifsView()" title="Notificaciones">
+            <i class="fa-solid fa-bell"></i> <span class="nav-text">Notificaciones</span> 
+            <div id="notif-badge" class="badge-notif hidden">0</div>
+        </a>
+        
+        <a href="javascript:void(0)" id="nav-threads" onclick="showThreadsView()" title="Hilos">
+            <i class="fa-solid fa-layer-group"></i> <span class="nav-text">Hilos</span>
+        </a>
+        
+        <a href="javascript:void(0)" id="nav-messages" onclick="showMessagesView()" title="Mensajes">
+            <i class="fa-solid fa-envelope"></i> <span class="nav-text">Mensajes</span> 
+            <div id="msg-badge" class="badge-notif hidden">0</div>
+        </a>
+        
+        <a href="javascript:void(0)" id="nav-profile" onclick="goToMyProfile()" title="Perfil">
+            <i class="fa-solid fa-user"></i> <span class="nav-text">Perfil</span>
+        </a>
+        
+        <a href="javascript:void(0)" id="nav-mod" class="hidden" onclick="showModView()" title="Mod">
+            <i class="fa-solid fa-shield-halved"></i> <span class="nav-text">Panel Mod</span>
+        </a>
+    </nav>
+    <!-- ... Resto del panel lateral ... -->
+            <div class="user-profile" onclick="goToMyProfile()" style="cursor:pointer;">
+                <div class="avatar"><img id="sidebar-avatar" src="https://i.imgur.com/6YGWg0A.png" alt="Tú"></div>
+                <div class="user-info">
+                    <span id="current-displayname" style="font-weight:bold; font-size:0.95rem;">Cargando...</span>
+                    <span id="current-username" style="font-size:0.85rem; color:var(--text-muted);">@usuario</span>
+                </div>
+                <button id="btn-logout" title="Cerrar Sesión"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+            </div>
+        </aside>
+
+        <main class="feed">
+            
+            <div id="view-feed">
+                <header class="feed-header" style="justify-content: space-between;">
+                    <h2>Inicio</h2>
+                    <button id="btn-nuke-feed" class="btn-small btn-danger hidden" onclick="nukeFeed()"><i class="fa-solid fa-bomb"></i> Purgar</button>
+                </header>
+
+                <div class="post-creator">
+                    <div class="avatar"><img id="creator-avatar" src="https://i.imgur.com/6YGWg0A.png" alt="Tú"></div>
+                    <div class="post-input-container" style="position:relative;">
+                        <textarea id="post-content" placeholder="¿Qué rol tienes en mente?"></textarea>
+                        <div id="mentions-dropdown" class="mentions-dropdown hidden"></div>
+                        <div id="post-image-preview-container" class="hidden">
+                            <img id="post-image-preview" src="" alt="Preview">
+                            <button id="btn-remove-image"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div class="post-actions">
+                            <label for="post-image-upload" class="upload-img-btn" title="Adjuntar imagen"><i class="fa-solid fa-image"></i></label>
+                            <input type="file" id="post-image-upload" accept="image/*" class="hidden">
+                            <button id="btn-create-post" class="btn-primary btn-post">Postear</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="posts-container"></div>
+            </div>
+
+            <div id="view-search" class="hidden">
+                <header class="feed-header" style="gap: 15px;">
+                    <button class="back-btn" onclick="window.location.hash=''"><i class="fa-solid fa-arrow-left"></i></button>
+                    <div class="search-bar" style="flex:1; margin:0; padding: 8px 15px;">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="main-search-input" placeholder="Buscar en RolerNet..." onkeyup="handleSearchInput(event)">
+                    </div>
+                </header>
+                <div class="profile-tabs">
+                    <button id="tab-search-posts" class="active" onclick="switchSearchTab('posts')">Pergaminos</button>
+                    <button id="tab-search-users" onclick="switchSearchTab('users')">Roleros</button>
+                </div>
+                <div id="search-results-container"></div>
+            </div>
+
+            <div id="view-single-post" class="hidden">
+                <header class="feed-header">
+                    <h2><button class="back-btn" onclick="window.location.hash=''"><i class="fa-solid fa-arrow-left"></i></button> Post</h2>
+                </header>
+                <div id="single-post-container"></div>
+            </div>
+
+            <div id="view-notifs" class="hidden">
+                <header class="feed-header"><h2>Notificaciones</h2></header>
+                <div id="notifs-container"></div>
+            </div>
+
+            <div id="view-profile" class="hidden">
+                <header class="feed-header" style="display:flex; align-items:center; gap:20px;">
+                    <button class="back-btn" onclick="window.location.hash=''"><i class="fa-solid fa-arrow-left"></i></button>
+                    <div>
+                        <h2 id="profile-top-name" style="margin:0; font-size:1.2rem;">Perfil</h2>
+                        <span id="profile-top-posts" style="color:var(--text-muted); font-size:0.8rem;">0 posts</span>
+                    </div>
+                </header>
+                <div class="profile-header-banner">
+                    <div class="profile-banner-bg"></div>
+                    <div class="profile-info-section">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:-60px; margin-bottom:10px;">
+                            <img id="profile-view-avatar" src="https://i.imgur.com/6YGWg0A.png" alt="Avatar" style="cursor:pointer;" onclick="openImageModal(this.src)">
+                            
+                            <div class="profile-action-btns">
+                                <input type="file" id="edit-profile-avatar" accept="image/*" class="hidden">
+                                <label for="edit-profile-avatar" id="btn-edit-avatar" class="btn-outline hidden" style="cursor:pointer;"><i class="fa-solid fa-camera"></i> Cambiar Foto</label>
+                                <button id="btn-edit-name" class="btn-outline hidden" onclick="editDisplayName()"><i class="fa-solid fa-pen"></i></button>
+                                
+                                <button id="btn-share-profile" class="btn-outline" title="Copiar Link"><i class="fa-solid fa-link"></i></button>
+                                <button id="btn-message-user" class="btn-outline hidden"><i class="fa-solid fa-envelope"></i></button>
+                                <button id="btn-follow-user" class="btn-primary hidden" style="font-weight:bold; padding: 6px 15px;">Seguir</button>
+                            </div>
+                        </div>
+
+                        <h3 id="profile-view-displayname-container" style="margin-bottom: 2px;">
+                            <span id="profile-view-displayname">Usuario</span>
+                            <span id="profile-view-verified"></span>
+                        </h3>
+                        <p id="profile-view-username" style="color:var(--text-muted); font-size:0.95rem; margin-bottom:15px;">@usuario</p>
+                        
+                        <div class="profile-follow-stats">
+                            <div><span id="profile-stat-following" class="stat-number">0</span> Siguiendo</div>
+                            <div><span id="profile-stat-followers" class="stat-number">0</span> Seguidores</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-tabs"><button class="active">Posts</button></div>
+                <div id="profile-posts-container"></div>
+            </div>
+
+            <div id="view-threads" class="hidden">
+                <header class="feed-header" style="justify-content: space-between;">
+                    <h2>Hilos</h2>
+                    <button id="btn-new-thread" onclick="createNewThread()" class="btn-primary btn-small"><i class="fa-solid fa-plus"></i></button>
+                </header>
+                <div id="thread-list-container"><div id="threads-list"></div></div>
+                <div id="active-thread-container" class="hidden" style="display:flex; flex-direction:column; height: calc(100vh - 61px);">
+                    <div class="thread-active-header" style="justify-content: space-between;">
+                        <div style="display:flex; align-items:center; gap:15px;">
+                            <button class="back-btn" onclick="closeActiveThread()"><i class="fa-solid fa-arrow-left"></i></button>
+                            <h3 id="active-thread-title">Título del hilo</h3>
+                        </div>
+                        <button id="btn-delete-thread" class="btn-small btn-danger hidden"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <p id="active-thread-desc" style="padding: 0 20px; color: var(--text-muted); border-bottom: 1px solid var(--border-color); padding-bottom:10px;"></p>
+                    <div id="thread-replies" class="chat-history"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="thread-reply-input" placeholder="Responde (Enter)...">
+                        <button id="btn-send-thread-reply"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-messages" class="hidden">
+                <header class="feed-header"><h2>Mensajes</h2></header>
+                <div class="twitter-messages-layout">
+                    <div class="messages-sidebar">
+                        <div class="messages-search-box">
+                            <input type="text" id="chat-search-input" placeholder="Buscar personas..." onkeyup="filterChatUsers()">
+                        </div>
+                        <div id="chat-users-list" class="chat-users-list"></div>
+                    </div>
+
+                    <div class="messages-chat-area">
+                        <div id="chat-placeholder" class="chat-placeholder">
+                            <h2 style="font-size: 2rem; margin-bottom: 10px;">Elige un mensaje</h2>
+                            <p style="color:var(--text-muted);">Elige uno de tus mensajes existentes o ve a un perfil para comenzar uno nuevo.</p>
+                        </div>
+                        <div id="chat-area" class="hidden" style="display:flex; flex-direction:column; height:100%;">
+                            <div class="chat-header" style="text-align:left; padding-left:20px; display:flex; align-items:center;">
+                                <button class="back-btn mobile-only" onclick="closeChatMobile()" style="margin-right:10px;"><i class="fa-solid fa-arrow-left"></i></button>
+                                <div style="display:flex; flex-direction:column;">
+                                    <h3 style="cursor:pointer; margin-bottom:0;" onclick="window.location.hash='#/@'+currentChatUser">
+                                        <span id="chat-with-name"></span>
+                                    </h3>
+                                    <span id="chat-typing-indicator" class="typing-text hidden">Escribiendo...</span>
+                                </div>
+                            </div>
+                            <div id="chat-messages-container" class="chat-history"></div>
+                            <div class="chat-input-area">
+                                <input type="text" id="chat-input" placeholder="Inicia un mensaje..." autocomplete="off">
+                                <button onclick="sendPrivateMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-mod" class="hidden">
+                <header class="feed-header"><h2>Panel de Mod</h2></header>
+                <div style="padding: 20px;">
+                    <input type="text" id="mod-search-input" placeholder="Buscar por @usuario o nombre..." onkeyup="filterModUsers()" style="width: 100%; padding: 12px; margin-bottom: 20px; background: var(--bg-dark); border: 1px solid var(--border-color); color: white; border-radius: 9999px; outline: none;">
+                    <div id="mod-users-container"></div>
+                </div>
+            </div>
+
+        </main>
+
+        <aside id="right-panel" class="right-panel">
+            <div class="search-bar">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="right-panel-search" placeholder="Buscar" onkeydown="if(event.key === 'Enter'){ document.getElementById('main-search-input').value = this.value; handleSearchInput(event); }">
+            </div>
+            <div class="trends-box">
+                <h3>Tendencias para ti</h3>
+                <div id="trends-container"><p style="color:var(--text-muted); font-size:0.9rem;">Cargando...</p></div>
+            </div>
+        </aside>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
