@@ -158,14 +158,7 @@ function handleRouting() {
     }
 }
 
-// Sobreescribe showFeedView para que apunte al nuevo hash
-window.showFeedView = function() { 
-    if(window.location.hash !== '#feed') window.location.hash = '#feed'; 
-    else handleRouting(); 
-}
-
 // Ahora los botones solo cambian el hash, obligando al sistema a navegar 100% seguro.
-window.showFeedView = function() { if(window.location.hash !== '') window.location.hash = ''; else handleRouting(); }
 window.showThreadsView = function() { if(window.location.hash !== '#threads') window.location.hash = '#threads'; else handleRouting(); }
 window.showModView = function() { if(window.location.hash !== '#mod') window.location.hash = '#mod'; else handleRouting(); }
 window.showNotifsView = function() { if(window.location.hash !== '#notifs') window.location.hash = '#notifs'; else handleRouting(); }
@@ -203,11 +196,12 @@ function hideAllViews() {
     document.getElementById('right-panel')?.classList.remove('hidden');
 }
 
-window.showFeedView = function() { 
-    hideAllViews(); 
-    viewFeed?.classList.remove('hidden'); 
-    document.getElementById('nav-home')?.classList.add('active'); 
-    if(allGlobalPosts.length > 0 && postsContainer) renderFeed(allGlobalPosts, postsContainer, true); 
+window.showFeedView = function() {
+    if (window.location.hash !== '#feed') {
+        window.location.hash = '#feed';
+    } else {
+        handleRouting();
+    }
 }
 
 window.goToMyProfile = function() { 
