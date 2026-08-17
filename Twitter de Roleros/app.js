@@ -153,9 +153,9 @@ function handleRouting() {
         hideAllViews(); viewFeed?.classList.remove('hidden'); document.getElementById('nav-home')?.classList.add('active'); 
         if(allGlobalPosts.length > 0 && postsContainer) renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral');
     } else if (hash === '' || hash === '#') {
-        // FORZAMOS a que al entrar/reiniciar te envíe directo a tu perfil
-        window.location.hash = `#/@${currentUser}`;
-    }
+    // FORZAMOS a que al entrar/reiniciar te envíe directo al feed
+    window.location.hash = '#feed';
+   }
 }
 
 // Ahora los botones solo cambian el hash, obligando al sistema a navegar 100% seguro.
