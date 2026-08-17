@@ -320,7 +320,9 @@ function listenToGlobalUsers() {
         
         if (viewMod && !viewMod.classList.contains('hidden')) renderModPanel();
         if (viewMessages && !viewMessages.classList.contains('hidden')) renderChatSidebar(); 
-        if (allGlobalPosts.length > 0 && viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) { renderFeed(allGlobalPosts, postsContainer, true); }
+        if (allGlobalPosts.length > 0 && viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) { 
+    renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral'); 
+}
         if (viewProfile && !viewProfile.classList.contains('hidden')) {
             const usernameNode = document.getElementById('profile-view-username');
             if(usernameNode) {
@@ -347,14 +349,24 @@ function listenToGlobalUsers() {
                     const bannerNode = document.getElementById('profile-banner-bg');
                     if(bannerNode) bannerNode.style.backgroundImage = userDbData.banner ? `url(${userDbData.banner})` : 'none';
 
+                    // ... código anterior ...
                     const btnFollow = document.getElementById('btn-follow-user');
                     if (btnFollow && viewedUser !== currentUser) {
                         const amIFollowing = (userDbData.followers || []).includes(currentUser);
                         if (amIFollowing) { btnFollow.innerHTML = `<i class="fa-solid fa-user-check"></i> Siguiendo`; btnFollow.classList.add('following-active'); btnFollow.onclick = () => toggleFollow(viewedUser, true); } 
                         else { btnFollow.innerHTML = `Seguir`; btnFollow.classList.remove('following-active'); btnFollow.onclick = () => toggleFollow(viewedUser, false); }
                     }
+                } // Fin del if (userDbData)
+                
+                // FIX 3: Re-renderizar los posts del perfil al recibir la info de usuarios
+                // Evita que los pergaminos queden con el avatar gris tras un F5
+                const profilePostsContainer = document.getElementById('profile-posts-container');
+                if (profilePostsContainer && allGlobalPosts.length > 0) {
+                    const userPosts = allGlobalPosts.filter(p => (p.usernameLower || p.username.toLowerCase()) === viewedUser);
+                    renderFeed(userPosts, profilePostsContainer, false);
                 }
-            }
+            } 
+        }
         }
     });
 }
@@ -782,7 +794,17 @@ function loadPostsRealtime() {
             if(node) {
                 const viewedUser = node.textContent.replace('@','').toLowerCase();
                 const userPosts = allGlobalPosts.filter(p => (p.usernameLower || p.username.toLowerCase()) === viewedUser);
-                renderFeed(userPosts, profilePostsContainer, false);
+                
+                // FIX 1: Actualizar el contador superior que se quedaba trabado en "0 posts"
+                const topPostsNode = document.getElementById('profile-top-posts');
+                if (topPostsNode) topPostsNode.textContent = `${userPosts.length} posts`;
+
+                // FIX 2: Renderizar los posts o el mensaje de vacío correctamente
+                if (userPosts.length === 0) {
+                    profilePostsContainer.innerHTML = '<p style="text-align:center; padding:40px; color:var(--text-muted);">Aún no hay pergaminos.</p>';
+                } else {
+                    renderFeed(userPosts, profilePostsContainer, false);
+                }
             }
         }
         if (viewSinglePost && !viewSinglePost.classList.contains('hidden')) { 
