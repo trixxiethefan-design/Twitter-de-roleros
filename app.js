@@ -143,14 +143,22 @@ function handleRouting() {
         const searchInput = document.getElementById('mod-search-input'); renderModPanel(searchInput ? searchInput.value.toLowerCase() : ""); 
     } else if (hash === '#search' || hash === '#explore') {
         hideAllViews();
+        document.querySelector('.app-layout')?.classList.remove('messages-mode');
+        document.getElementById('right-panel')?.classList.remove('hidden');
         viewExplore?.classList.remove('hidden');
         document.getElementById('nav-search')?.classList.add('active');
-        if (typeof window.renderExplore === 'function') renderExplore(document.getElementById('explore-search-input')?.value || '');
+        if (typeof window.renderExplore === 'function') {
+            window.renderExplore(document.getElementById('explore-search-input')?.value || '');
+        }
     } else if (hash === '#bookmarks') {
         hideAllViews();
+        document.querySelector('.app-layout')?.classList.remove('messages-mode');
+        document.getElementById('right-panel')?.classList.remove('hidden');
         viewBookmarks?.classList.remove('hidden');
         document.getElementById('nav-bookmarks')?.classList.add('active');
-        if (typeof window.renderBookmarks === 'function') renderBookmarks();
+        if (typeof window.renderBookmarks === 'function') {
+            window.renderBookmarks();
+        }
     } else if (hash.startsWith('#/hashtag/')) {
         hideAllViews();
         viewHashtag?.classList.remove('hidden');
@@ -172,21 +180,19 @@ window.showThreadsView = function() { if(window.location.hash !== '#threads') wi
 window.showModView = function() { if(window.location.hash !== '#mod') window.location.hash = '#mod'; else handleRouting(); }
 window.showNotifsView = function() { if(window.location.hash !== '#notifs') window.location.hash = '#notifs'; else handleRouting(); }
 window.showMessagesView = function() { if(window.location.hash !== '#messages') window.location.hash = '#messages'; else handleRouting(); }
-window.showSearchView = function() { window.showExploreView(); }
-window.showExploreView = function() {
-    if (window.location.hash !== '#explore') {
-        window.location.hash = '#explore';
-    } else {
-        handleRouting();
+function navigateToHash(targetHash) {
+    if (!currentUser) return;
+    if (window.location.hash !== targetHash) {
+        window.location.hash = targetHash;
     }
+    // Ejecutamos la ruta inmediatamente. Así la navegación no depende
+    // de que el evento hashchange llegue en otro ciclo del navegador.
+    handleRouting();
 }
-window.showBookmarksView = function() {
-    if (window.location.hash !== '#bookmarks') {
-        window.location.hash = '#bookmarks';
-    } else {
-        handleRouting();
-    }
-}
+
+window.showSearchView = function() { navigateToHash('#explore'); }
+window.showExploreView = function() { navigateToHash('#explore'); }
+window.showBookmarksView = function() { navigateToHash('#bookmarks'); }
 
 // Navegación robusta: entra aunque el hash ya sea el mismo.
 // También evita depender de onclick inline, algo que Chrome puede bloquear por CSP.
@@ -1122,9 +1128,6 @@ window.toggleBan = async function(userId, currentStatus) { if(confirm(`¿Seguro?
 window.toggleVerify = async function(userId, currentStatus) { await updateDoc(doc(db, "users", userId), { verified: !currentStatus }); }
 window.toggleModRole = async function(userId, currentStatus) { if(confirm(`¿Seguro?`)) await updateDoc(doc(db, "users", userId), { role: currentStatus ? 'user' : 'mod' }); }
 
-// START
-init();
-
 // ================= X FEATURES =================
 let currentProfileTab='posts'; let currentExploreTab='forYou';
 window.toggleBookmark=async function(postId){const id=globalUsersMap[currentUser]?.id;if(!id)return;const arr=getMyBookmarks();try{await updateDoc(doc(db,'users',id),{bookmarks:arr.includes(postId)?arrayRemove(postId):arrayUnion(postId)});if(window.location.hash==='#bookmarks')renderBookmarks();}catch(e){console.error(e)}};
@@ -1196,3 +1199,6 @@ window.renderHashtag=function(tag){const clean=tag.replace(/^#/,'').toLowerCase(
 window.switchProfileTab=function(tab){currentProfileTab=tab;document.querySelectorAll('.x-profile-tabs button').forEach(b=>b.classList.remove('active'));document.getElementById(`profile-tab-${tab}`)?.classList.add('active');const node=document.getElementById('profile-view-username');const user=(node?.textContent||'').replace(/^@/,'').toLowerCase();const posts=allGlobalPosts.filter(p=>createSafeUsername(p)===user);const c=document.getElementById('profile-posts-container');if(!c)return;if(tab==='likes'){c.innerHTML=allGlobalPosts.filter(p=>(p.likedBy||[]).includes(user)).map(generatePostHTML).filter(Boolean).join('')||'<div class="bookmark-empty">Todavía no hay Me gusta públicos.</div>';}else if(tab==='replies'){c.innerHTML=allGlobalPosts.filter(p=>p.replyTo===user).map(generatePostHTML).filter(Boolean).join('')||'<div class="bookmark-empty">No hay respuestas para mostrar.</div>';}else{c.innerHTML=posts.map(generatePostHTML).filter(Boolean).join('')||'<div class="bookmark-empty">Aún no hay posts.</div>';}};
 function renderSuggestions(){const c=document.getElementById('suggestions-container');if(!c)return;const me=getUserData(currentUser);const users=Object.values(globalUsersMap).filter(u=>{const k=(u.usernameLower||u.username||'').toLowerCase();return k&&k!==currentUser&&!(me.following||[]).includes(k)&&!(me.blocked||[]).includes(k)}).sort((a,b)=>(b.followers?.length||0)-(a.followers?.length||0)).slice(0,3);c.innerHTML=users.map(u=>`<div class="suggestion"><img src="${u.avatar||'https://i.imgur.com/6YGWg0A.png'}"><div class="suggestion-main" onclick="window.location.hash='#/@${u.username}'"><div class="suggestion-name">${escapeHtml(u.displayName||u.username)}</div><div class="suggestion-tag">@${escapeHtml(u.username)}</div></div><button class="btn-outline" onclick="event.stopPropagation();quickFollow('${u.usernameLower||u.username}')">Seguir</button></div>`).join('');}
 window.quickFollow=function(user){const target=getUserData(user);const mine=getUserData(currentUser);toggleFollow(user,(mine.following||[]).includes(user));};
+
+// START - inicializar después de registrar TODAS las funciones y vistas.
+init();
