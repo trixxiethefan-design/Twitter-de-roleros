@@ -1160,58 +1160,172 @@ window.closePostMenu=function(){document.querySelector('.block-menu')?.remove()}
 window.toggleMute=async function(user){const id=globalUsersMap[currentUser]?.id;if(!id||user===currentUser)return;const me=getUserData(currentUser);const on=(me.muted||[]).includes(user);try{await updateDoc(doc(db,'users',id),{muted:on?arrayRemove(user):arrayUnion(user)});alert(on?`Dejaste de silenciar @${user}`:`Silenciaste @${user}`)}catch(e){}}
 window.toggleBlock=async function(user){const id=globalUsersMap[currentUser]?.id;if(!id||user===currentUser)return;const me=getUserData(currentUser);const on=(me.blocked||[]).includes(user);try{await updateDoc(doc(db,'users',id),{blocked:on?arrayRemove(user):arrayUnion(user)});alert(on?`Desbloqueaste @${user}`:`Bloqueaste @${user}`)}catch(e){}}
 window.reportPost=async function(postId){const reason=prompt('Motivo de la denuncia:','Spam');if(!reason)return;try{await addDoc(collection(db,'reports'),{postId,from:currentUser,reason,createdAt:serverTimestamp(),status:'pending'});alert('Denuncia enviada a moderación.')}catch(e){}}
-window.setExploreTab=function(tab,btn){currentExploreTab=tab;document.querySelectorAll('.explore-tabs button').forEach(b=>b.classList.remove('active'));btn?.classList.add('active');renderExplore(document.getElementById('explore-search-input')?.value||'');};
+window.setExploreTab=function(tab,btn){
+    currentExploreTab=tab;
+    document.querySelectorAll('.explore-tabs button').forEach((b,i)=>{
+        b.classList.toggle('active',
+            (tab==='forYou' && i===0) ||
+            (tab==='trending' && i===1) ||
+            (tab==='people' && i===2)
+        );
+    });
+    renderExplore(document.getElementById('explore-search-input')?.value||'');
+};
 window.renderExplore=function(term=''){
-    const c=document.getElementById('explore-container'); if(!c)return;
+    const c=document.getElementById('explore-container');
+    if(!c)return;
+
     const q=term.trim().toLowerCase();
+    const me=getUserData(currentUser)||{};
+    const hiddenNames=new Set([
+        ...(me.blocked||[]).map(String),
+        ...(me.muted||[]).map(String)
+    ].map(x=>x.toLowerCase()));
+
     const counts={};
     allGlobalPosts.forEach(p=>{
+        if(isHiddenByMe(createSafeUsername(p))) return;
         (p.content||'').match(/#[\wÁÉÍÓÚÑáéíóúñ]+/g)?.forEach(t=>{
             const key=t.toLowerCase();
             counts[key]=(counts[key]||0)+1;
         });
     });
-    const tags=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,12);
+    const tags=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
 
+    // Cuando el usuario escribe, Explorar funciona como buscador global.
     if(q){
-        const postResults=allGlobalPosts.filter(p=>(p.content||'').toLowerCase().includes(q)||(p.username||'').toLowerCase().includes(q));
-        const userResults=Object.values(globalUsersMap).filter(u=>
-            (u.usernameLower||u.username||'').toLowerCase().includes(q) ||
-            (u.displayName||'').toLowerCase().includes(q)
-        ).filter(u=>(u.usernameLower||u.username||'').toLowerCase()!==currentUser).slice(0,8);
-        const hashtagResults=tags.filter(([tag])=>tag.includes(q.replace(/^#/,'').toLowerCase())).slice(0,6);
+        const postResults=allGlobalPosts.filter(p=>{
+            const author=createSafeUsername(p);
+            if(isHiddenByMe(author)) return false;
+            return (p.content||'').toLowerCase().includes(q) || author.includes(q);
+        });
+
+        const userResults=Object.values(globalUsersMap).filter(u=>{
+            const k=(u.usernameLower||u.username||'').toLowerCase();
+            if(!k || k===currentUser || hiddenNames.has(k)) return false;
+            return k.includes(q) || (u.displayName||'').toLowerCase().includes(q);
+        }).slice(0,12);
+
+        const hashtagResults=tags
+            .filter(([tag])=>tag.includes(q.replace(/^#/,'').toLowerCase()))
+            .slice(0,8);
+
         let html='';
         if(hashtagResults.length){
-            html+=`<section class="explore-section"><h3>Temas</h3><div class="explore-grid">${hashtagResults.map(([tag,n])=>`<div class="explore-card" onclick="window.location.hash='#/hashtag/'+encodeURIComponent('${tag}')"><div class="explore-count">Tendencia</div><div class="explore-tag">${escapeHtml(tag)}</div><div class="explore-count">${n} posts</div></div>`).join('')}</div></section>`;
+            html+=`<section class="explore-section"><h3>Temas</h3><div class="explore-grid">${hashtagResults.map(([tag,n],i)=>`
+                <div class="explore-card" onclick="window.location.hash='#/hashtag/'+encodeURIComponent('${tag}')">
+                    <div class="explore-count">${i+1} · Tendencia</div>
+                    <div class="explore-tag">${escapeHtml(tag)}</div>
+                    <div class="explore-count">${n} ${n===1?'post':'posts'}</div>
+                </div>`).join('')}</div></section>`;
         }
         if(userResults.length){
-            html+=`<section class="explore-section"><h3>Personas</h3>${userResults.map(u=>`<div class="suggestion explore-card"><img src="${u.avatar||'https://i.imgur.com/6YGWg0A.png'}"><div class="suggestion-main" onclick="window.location.hash='#/@${u.username}'"><div class="suggestion-name">${escapeHtml(u.displayName||u.username)} ${u.verified?'<i class="fa-solid fa-circle-check verified-badge"></i>':''}</div><div class="suggestion-tag">@${escapeHtml(u.username)}</div></div><button class="btn-outline" onclick="event.stopPropagation();window.location.hash='#/@${u.username}'">Ver</button></div>`).join('')}</section>`;
+            html+=`<section class="explore-section"><h3>Personas</h3>${userResults.map(u=>{
+                const k=(u.usernameLower||u.username||'').toLowerCase();
+                return `<div class="suggestion explore-card" onclick="window.location.hash='#/@${u.username}'">
+                    <img src="${u.avatar||'https://i.imgur.com/6YGWg0A.png'}" alt="">
+                    <div class="suggestion-main">
+                        <div class="suggestion-name">${escapeHtml(u.displayName||u.username)} ${u.verified?'<i class="fa-solid fa-circle-check verified-badge"></i>':''}</div>
+                        <div class="suggestion-tag">@${escapeHtml(u.username)}</div>
+                    </div>
+                    <button class="btn-outline" onclick="event.stopPropagation();quickFollow('${k}')">Ver</button>
+                </div>`;
+            }).join('')}</section>`;
         }
         html+=`<section class="explore-section"><h3>Posts</h3>`;
-        html+=postResults.length?postResults.map(generatePostHTML).filter(Boolean).join(''):'<div class="bookmark-empty">No encontramos posts que coincidan.</div>';
+        html+=postResults.length
+            ? postResults.map(generatePostHTML).filter(Boolean).join('')
+            : '<div class="bookmark-empty">No encontramos resultados que coincidan.</div>';
         html+='</section>';
         c.innerHTML=html;
         return;
     }
 
-    const viral=[...allGlobalPosts].filter(p=>!isHiddenByMe(createSafeUsername(p))).sort((a,b)=>{
-        const sa=(b.likedBy?.length||0)*5 + allGlobalPosts.filter(x=>x.isRepost&&x.originalId===b.id).length*8;
-        const sb=(a.likedBy?.length||0)*5 + allGlobalPosts.filter(x=>x.isRepost&&x.originalId===a.id).length*8;
-        return sa-sb;
-    }).slice(0,6);
-    const people=Object.values(globalUsersMap).filter(u=>{
-        const k=(u.usernameLower||u.username||'').toLowerCase();
-        const me=getUserData(currentUser);
-        return k&&k!==currentUser&&!(me.following||[]).includes(k)&&!(me.blocked||[]).includes(k);
-    }).sort((a,b)=>(b.followers?.length||0)-(a.followers?.length||0)).slice(0,5);
+    const viral=[...allGlobalPosts]
+        .filter(p=>!isHiddenByMe(createSafeUsername(p)))
+        .sort((a,b)=>{
+            const score=p=>((p.likedBy?.length||0)*5)
+                +allGlobalPosts.filter(x=>x.isRepost&&x.originalId===p.id).length*8
+                +((p.comments?.length||0)*2);
+            return score(b)-score(a);
+        });
+
+    const people=Object.values(globalUsersMap)
+        .filter(u=>{
+            const k=(u.usernameLower||u.username||'').toLowerCase();
+            return k && k!==currentUser && !hiddenNames.has(k) && !(me.following||[]).includes(k);
+        })
+        .sort((a,b)=>(b.followers?.length||0)-(a.followers?.length||0));
+
     let html='';
-    html+=`<section class="explore-section"><div class="section-title-row"><h3>Qué está pasando</h3><button class="link-more" onclick="setExploreTab('trending',document.querySelector('.explore-tabs button:nth-child(2)'))">Ver todo</button></div>`;
-    html+=tags.length?`<div class="explore-grid">${tags.map(([tag,n],i)=>`<div class="explore-card" onclick="window.location.hash='#/hashtag/'+encodeURIComponent('${tag}')"><div class="explore-count">${i+1} · Tendencia</div><div class="explore-tag">${escapeHtml(tag)}</div><div class="explore-count">${n} posts</div></div>`).join('')}</div>`:'<div class="bookmark-empty">Todavía no hay tendencias.</div>';
-    html+='</section>';
-    if(people.length){
-        html+=`<section class="explore-section"><div class="section-title-row"><h3>A quién seguir</h3><button class="link-more" onclick="setExploreTab('people',document.querySelector('.explore-tabs button:nth-child(3)'))">Ver todo</button></div>${people.map(u=>`<div class="suggestion explore-card"><img src="${u.avatar||'https://i.imgur.com/6YGWg0A.png'}"><div class="suggestion-main" onclick="window.location.hash='#/@${u.username}'"><div class="suggestion-name">${escapeHtml(u.displayName||u.username)} ${u.verified?'<i class="fa-solid fa-circle-check verified-badge"></i>':''}</div><div class="suggestion-tag">@${escapeHtml(u.username)}</div></div><button class="btn-outline" onclick="event.stopPropagation();quickFollow('${u.usernameLower||u.username}')">Seguir</button></div>`).join('')}</section>`;
+
+    if(currentExploreTab==='trending'){
+        html+=`<section class="explore-section">
+            <div class="section-title-row"><h3>Qué está pasando</h3></div>
+            ${tags.length
+                ? `<div class="explore-grid">${tags.slice(0,20).map(([tag,n],i)=>`
+                    <div class="explore-card" onclick="window.location.hash='#/hashtag/'+encodeURIComponent('${tag}')">
+                        <div class="explore-count">${i+1} · Tendencia</div>
+                        <div class="explore-tag">${escapeHtml(tag)}</div>
+                        <div class="explore-count">${n} ${n===1?'post':'posts'}</div>
+                    </div>`).join('')}</div>`
+                : '<div class="bookmark-empty">Todavía no hay tendencias.</div>'}
+        </section>`;
+    } else if(currentExploreTab==='people'){
+        html+=`<section class="explore-section">
+            <div class="section-title-row"><h3>A quién seguir</h3></div>
+            ${people.length
+                ? people.slice(0,20).map(u=>{
+                    const k=(u.usernameLower||u.username||'').toLowerCase();
+                    return `<div class="suggestion explore-card" onclick="window.location.hash='#/@${u.username}'">
+                        <img src="${u.avatar||'https://i.imgur.com/6YGWg0A.png'}" alt="">
+                        <div class="suggestion-main">
+                            <div class="suggestion-name">${escapeHtml(u.displayName||u.username)} ${u.verified?'<i class="fa-solid fa-circle-check verified-badge"></i>':''}</div>
+                            <div class="suggestion-tag">@${escapeHtml(u.username)}</div>
+                        </div>
+                        <button class="btn-outline" onclick="event.stopPropagation();quickFollow('${k}')">Seguir</button>
+                    </div>`;
+                }).join('')
+                : '<div class="bookmark-empty">No hay personas nuevas para sugerirte.</div>'}
+        </section>`;
+    } else {
+        html+=`<section class="explore-section">
+            <div class="section-title-row"><h3>Qué está pasando</h3><button class="link-more" onclick="setExploreTab('trending')">Ver todo</button></div>
+            ${tags.length
+                ? `<div class="explore-grid">${tags.slice(0,6).map(([tag,n],i)=>`
+                    <div class="explore-card" onclick="window.location.hash='#/hashtag/'+encodeURIComponent('${tag}')">
+                        <div class="explore-count">${i+1} · Tendencia</div>
+                        <div class="explore-tag">${escapeHtml(tag)}</div>
+                        <div class="explore-count">${n} ${n===1?'post':'posts'}</div>
+                    </div>`).join('')}</div>`
+                : '<div class="bookmark-empty">Todavía no hay tendencias.</div>'}
+        </section>`;
+
+        if(people.length){
+            html+=`<section class="explore-section">
+                <div class="section-title-row"><h3>A quién seguir</h3><button class="link-more" onclick="setExploreTab('people')">Ver todo</button></div>
+                ${people.slice(0,5).map(u=>{
+                    const k=(u.usernameLower||u.username||'').toLowerCase();
+                    return `<div class="suggestion explore-card" onclick="window.location.hash='#/@${u.username}'">
+                        <img src="${u.avatar||'https://i.imgur.com/6YGWg0A.png'}" alt="">
+                        <div class="suggestion-main">
+                            <div class="suggestion-name">${escapeHtml(u.displayName||u.username)} ${u.verified?'<i class="fa-solid fa-circle-check verified-badge"></i>':''}</div>
+                            <div class="suggestion-tag">@${escapeHtml(u.username)}</div>
+                        </div>
+                        <button class="btn-outline" onclick="event.stopPropagation();quickFollow('${k}')">Seguir</button>
+                    </div>`;
+                }).join('')}
+            </section>`;
+        }
+
+        html+=`<section class="explore-section">
+            <div class="section-title-row"><h3>Lo más comentado</h3></div>
+            ${viral.length
+                ? viral.slice(0,6).map(generatePostHTML).filter(Boolean).join('')
+                : '<div class="bookmark-empty">Publicá algo para empezar a explorar.</div>'}
+        </section>`;
     }
-    html+=`<section class="explore-section"><div class="section-title-row"><h3>Lo más comentado</h3></div>${viral.length?viral.map(generatePostHTML).filter(Boolean).join(''):'<div class="bookmark-empty">Publicá algo para empezar a explorar.</div>'}</section>`;
+
     c.innerHTML=html;
 };
 window.renderHashtag=function(tag){const clean=tag.replace(/^#/,'').toLowerCase();const c=document.getElementById('hashtag-container');if(!c)return;const posts=allGlobalPosts.filter(p=>(p.content||'').toLowerCase().includes('#'+clean));c.innerHTML=posts.length?posts.map(generatePostHTML).filter(Boolean).join(''):'<div class="bookmark-empty">No hay posts con este hashtag.</div>';};
