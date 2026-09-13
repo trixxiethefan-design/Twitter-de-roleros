@@ -75,8 +75,11 @@
             <a href="javascript:void(0)" id="nav-home" class="active" onclick="window.showFeedView()" title="Inicio">
                 <i class="fa-solid fa-house"></i> <span class="nav-text">Inicio</span>
             </a>
-            <a href="javascript:void(0)" id="nav-search" onclick="showSearchView()" title="Buscar">
-                <i class="fa-solid fa-magnifying-glass"></i> <span class="nav-text">Buscar</span>
+            <a href="javascript:void(0)" id="nav-search" onclick="showSearchView()" title="Explorar">
+                <i class="fa-solid fa-magnifying-glass"></i> <span class="nav-text">Explorar</span>
+            </a>
+            <a href="javascript:void(0)" id="nav-bookmarks" onclick="showBookmarksView()" title="Guardados">
+                <i class="fa-regular fa-bookmark"></i> <span class="nav-text">Guardados</span>
             </a>
             <a href="javascript:void(0)" id="nav-notifs" onclick="showNotifsView()" title="Notificaciones">
                 <i class="fa-solid fa-bell"></i> <span class="nav-text">Notificaciones</span> 
@@ -115,15 +118,18 @@
                 <button id="btn-nuke-feed" class="btn-small btn-danger hidden" onclick="nukeFeed()"><i class="fa-solid fa-bomb"></i> Purgar</button>
             </header>
             
-            <div class="feed-tabs" style="display: flex; border-bottom: 1px solid var(--border-color); margin-bottom: 15px;">
-                <button id="tab-feed-viral" class="feed-tab active" onclick="setFeedTab('viral')" style="flex:1; background:none; color:var(--text-main); border:none; padding:12px; cursor:pointer; font-weight:bold; border-bottom: 3px solid var(--accent-primary); transition: 0.2s;">Viral</button>
-                <button id="tab-feed-nuevos" class="feed-tab" onclick="setFeedTab('nuevos')" style="flex:1; background:none; color:var(--text-muted); border:none; padding:12px; cursor:pointer; font-weight:bold; border-bottom: 3px solid transparent; transition: 0.2s;">Nuevos</button>
+            <div class="feed-tabs x-tabs">
+                <button id="tab-feed-parati" class="feed-tab active" onclick="setFeedTab('parati')">Para ti</button>
+                <button id="tab-feed-siguiendo" class="feed-tab" onclick="setFeedTab('siguiendo')">Siguiendo</button>
+                <button id="tab-feed-viral" class="feed-tab" onclick="setFeedTab('viral')">Viral</button>
+                <button id="tab-feed-nuevos" class="feed-tab" onclick="setFeedTab('nuevos')">Nuevos</button>
             </div>
 
             <div class="post-creator">
                 <div class="avatar"><img id="creator-avatar" src="https://i.imgur.com/6YGWg0A.png" alt="Tú"></div>
                 <div class="post-input-container" style="position:relative;">
-                    <textarea id="post-content" placeholder="¿Qué rol tienes en mente?"></textarea>
+                    <textarea id="post-content" maxlength="280" placeholder="¿Qué está pasando en GH? Tú postearás, la casa opinará."></textarea>
+                    <div class="composer-meta"><span id="post-char-count">0/280</span><button class="composer-poll-btn" onclick="openPollComposer()" type="button"><i class="fa-solid fa-square-poll-horizontal"></i> Encuesta</button></div>
                     <div id="mentions-dropdown" class="mentions-dropdown hidden"></div>
                     <div id="post-image-preview-container" class="hidden"></div>
                     <div class="post-actions">
@@ -136,6 +142,23 @@
             </div>
             <div id="posts-container"></div>
         </div>
+
+            <div id="view-explore" class="hidden">
+                <header class="feed-header"><h2>Explorar</h2></header>
+                <div class="explore-search-wrap"><div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="explore-search-input" placeholder="Buscar en RolerNet..." oninput="renderExplore(this.value)"></div></div>
+                <div class="explore-tabs"><button class="active" onclick="setExploreTab('forYou',this)">Para ti</button><button onclick="setExploreTab('trending',this)">Tendencias</button><button onclick="setExploreTab('people',this)">Personas</button></div>
+                <div id="explore-container"></div>
+            </div>
+
+            <div id="view-bookmarks" class="hidden">
+                <header class="feed-header"><h2>Guardados</h2></header>
+                <div id="bookmarks-container"></div>
+            </div>
+
+            <div id="view-hashtag" class="hidden">
+                <header class="feed-header"><button class="back-btn" onclick="window.location.hash='#feed'"><i class="fa-solid fa-arrow-left"></i></button><h2 id="hashtag-title">#hashtag</h2></header>
+                <div id="hashtag-container"></div>
+            </div>
 
             <div id="view-search" class="hidden">
                 <header class="feed-header" style="gap: 15px;">
@@ -209,7 +232,11 @@
         </div>
     </div>
 </div>
-                <div class="profile-tabs"><button class="active">Posts</button></div>
+                <div class="profile-tabs x-profile-tabs">
+                    <button id="profile-tab-posts" class="active" onclick="switchProfileTab('posts')">Posts</button>
+                    <button id="profile-tab-replies" onclick="switchProfileTab('replies')">Respuestas</button>
+                    <button id="profile-tab-likes" onclick="switchProfileTab('likes')">Me gusta</button>
+                </div>
                 <div id="profile-posts-container"></div>
             </div>
 
@@ -287,9 +314,15 @@
                 <input type="text" id="right-panel-search" placeholder="Buscar" onkeydown="if(event.key === 'Enter'){ document.getElementById('main-search-input').value = this.value; handleSearchInput(event); }">
             </div>
             <div class="trends-box">
-                <h3>Tendencias para ti</h3>
+                <h3>Lo que está pasando</h3>
                 <div id="trends-container"><p style="color:var(--text-muted); font-size:0.9rem;">Cargando...</p></div>
+                <button class="link-more" onclick="showExploreView()">Mostrar más</button>
             </div>
+            <div class="trends-box" id="suggestions-box">
+                <h3>A quién seguir</h3>
+                <div id="suggestions-container"></div>
+            </div>
+            <div class="x-footer"><span>RolerNet</span><span>·</span><span>Hecho para la comunidad GH de TikTok</span></div>
         </aside>
     </div>
 

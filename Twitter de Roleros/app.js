@@ -67,6 +67,9 @@ const viewMod = document.getElementById('view-mod');
 const viewNotifs = document.getElementById('view-notifs'); 
 const viewSinglePost = document.getElementById('view-single-post');
 const viewSearch = document.getElementById('view-search');
+const viewExplore = document.getElementById('view-explore');
+const viewBookmarks = document.getElementById('view-bookmarks');
+const viewHashtag = document.getElementById('view-hashtag');
 
 const postContent = document.getElementById('post-content'); 
 const btnCreatePost = document.getElementById('btn-create-post'); 
@@ -104,21 +107,9 @@ window.addEventListener('hashchange', handleRouting);
 
 window.setFeedTab = function(tab) {
     currentFeedTab = tab;
-    const tabViral = document.getElementById('tab-feed-viral');
-    const tabNuevos = document.getElementById('tab-feed-nuevos');
-
-    if (tab === 'viral') {
-        if (tabViral) { tabViral.classList.add('active'); tabViral.style.color = 'var(--text-main)'; tabViral.style.borderBottom = '3px solid var(--accent-primary)'; }
-        if (tabNuevos) { tabNuevos.classList.remove('active'); tabNuevos.style.color = 'var(--text-muted)'; tabNuevos.style.borderBottom = '3px solid transparent'; }
-    } else {
-        if (tabNuevos) { tabNuevos.classList.add('active'); tabNuevos.style.color = 'var(--text-main)'; tabNuevos.style.borderBottom = '3px solid var(--accent-primary)'; }
-        if (tabViral) { tabViral.classList.remove('active'); tabViral.style.color = 'var(--text-muted)'; tabViral.style.borderBottom = '3px solid transparent'; }
-    }
-
-    // Refrescar el feed
-    if (viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) {
-        renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral');
-    }
+    document.querySelectorAll('.x-tabs .feed-tab').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`tab-feed-${tab === 'parati' ? 'parati' : tab}`)?.classList.add('active');
+    if (viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) renderFeed(allGlobalPosts, postsContainer, tab);
 }
 
 function handleRouting() {
@@ -154,7 +145,7 @@ function handleRouting() {
         hideAllViews(); const vs = document.getElementById('view-search'); if (vs) vs.classList.remove('hidden'); document.getElementById('nav-search')?.classList.add('active'); 
     } else if (hash === '#feed') {
         hideAllViews(); viewFeed?.classList.remove('hidden'); document.getElementById('nav-home')?.classList.add('active'); 
-        if(allGlobalPosts.length > 0 && postsContainer) renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral');
+        if(allGlobalPosts.length > 0 && postsContainer) renderFeed(allGlobalPosts, postsContainer, currentFeedTab);
     } else if (hash === '' || hash === '#') {
         window.location.hash = '#feed';
    }
@@ -164,7 +155,9 @@ window.showThreadsView = function() { if(window.location.hash !== '#threads') wi
 window.showModView = function() { if(window.location.hash !== '#mod') window.location.hash = '#mod'; else handleRouting(); }
 window.showNotifsView = function() { if(window.location.hash !== '#notifs') window.location.hash = '#notifs'; else handleRouting(); }
 window.showMessagesView = function() { if(window.location.hash !== '#messages') window.location.hash = '#messages'; else handleRouting(); }
-window.showSearchView = function() { if(window.location.hash !== '#search') window.location.hash = '#search'; else handleRouting(); }
+window.showSearchView = function() { if(window.location.hash !== '#explore') window.location.hash = '#explore'; else handleRouting(); }
+window.showExploreView = function() { window.showSearchView(); }
+window.showBookmarksView = function() { if(window.location.hash !== '#bookmarks') window.location.hash = '#bookmarks'; else handleRouting(); }
 
 function showAuth() { 
     authView?.classList.remove('hidden'); 
@@ -192,6 +185,9 @@ function hideAllViews() {
     viewNotifs?.classList.add('hidden'); 
     viewSinglePost?.classList.add('hidden');
     viewSearch?.classList.add('hidden');
+    viewExplore?.classList.add('hidden');
+    viewBookmarks?.classList.add('hidden');
+    viewHashtag?.classList.add('hidden');
     document.querySelectorAll('.sidebar nav a').forEach(a => a.classList.remove('active'));
     document.querySelector('.app-layout')?.classList.remove('messages-mode');
     document.getElementById('right-panel')?.classList.remove('hidden');
@@ -239,7 +235,6 @@ function listenToGlobalUsers() {
         
         const myData = globalUsersMap[currentUser];
         let dbRole = (myData?.role || 'user').toLowerCase();
-        if (currentUser === 'trixxie') dbRole = 'admin'; 
         
         currentUserRole = dbRole;
         isModMode = (currentUserRole === 'admin' || currentUserRole === 'mod');
@@ -284,9 +279,10 @@ function listenToGlobalUsers() {
         }
         
         if (viewMod && !viewMod.classList.contains('hidden')) renderModPanel();
-        if (viewMessages && !viewMessages.classList.contains('hidden')) renderChatSidebar(); 
+        if (viewMessages && !viewMessages.classList.contains('hidden')) renderChatSidebar();
+        renderSuggestions(); 
         if (allGlobalPosts.length > 0 && viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) { 
-            renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral'); 
+            renderFeed(allGlobalPosts, postsContainer, currentFeedTab); 
         }
         if (viewProfile && !viewProfile.classList.contains('hidden')) {
             const usernameNode = document.getElementById('profile-view-username');
@@ -487,8 +483,10 @@ function loadNotifsRealtime() {
             const uKey = n.from ? n.from.toLowerCase() : ''; const uData = globalUsersMap[uKey] || {};
             const avatar = uData.avatar || "https://i.imgur.com/6YGWg0A.png"; const name = uData.displayName || n.from;
             
-            if (n.type === 'follow') { container.innerHTML += `<div class="notif-item" onclick="window.location.hash='#/@${n.from}'"><div class="notif-icon"><i class="fa-solid fa-user" style="color:var(--accent-primary);"></i></div><img src="${avatar}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;"><div class="notif-content"><strong>${name}</strong> comenzó a seguirte.<span class="notif-time">${formatTimeNice(n.timestamp)}</span></div></div>`; } 
-            else { container.innerHTML += `<div class="notif-item" onclick="window.location.hash='#/@${n.from}/status/${n.postId}'"><div class="notif-icon"><i class="fa-solid fa-at"></i></div><img src="${avatar}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;"><div class="notif-content"><strong>${name}</strong> te ha mencionado.<span class="notif-time">${formatTimeNice(n.timestamp)}</span></div></div>`; }
+            const messages={follow:'comenzó a seguirte.',like:'le dio Me gusta a tu post.',reply:'respondió a tu post.',quote:'citó tu post.',repost:'reposteó tu post.'};
+            const icons={follow:'fa-user',like:'fa-heart',reply:'fa-comment',quote:'fa-quote-left',repost:'fa-retweet',mention:'fa-at'};
+            const text=messages[n.type]||'interactuó con tu post.'; const target=n.postId?`onclick="window.location.hash='#/@${n.from}/status/${n.postId}'"`:'';
+            container.innerHTML += `<div class="notif-item" ${target}><div class="notif-icon"><i class="fa-solid ${icons[n.type]||'fa-bell'}"></i></div><img src="${avatar}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;"><div class="notif-content"><strong>${name}</strong> ${text}<span class="notif-time">${formatTimeNice(n.timestamp)}</span></div></div>`;
         });
     });
 }
@@ -531,7 +529,7 @@ window.insertMention = function(username) {
 }
 document.addEventListener('click', (e) => { if(!e.target.closest('.post-input-container') && mentionsDropdown) mentionsDropdown.classList.add('hidden'); });
 
-let currentFeedTab = 'viral';
+let currentFeedTab = 'parati';
 
 // ================= SUBIDA DE MULTIMEDIA Y PREVISUALIZACIÓN =================
 if (postImageUpload) {
@@ -583,6 +581,10 @@ function renderMediaPreview(isVideo, src) {
     }
 }
 
+
+const postCounter=document.getElementById('post-char-count');
+if(postContent&&postCounter){postContent.addEventListener('input',()=>{postCounter.textContent=`${postContent.value.length}/280`;postCounter.style.color=postContent.value.length>=260?'var(--error)':'var(--text-muted)';});}
+
 // ================= AUTENTICACIÓN =================
 if (tabLogin) tabLogin.addEventListener('click', () => { isLoginMode = true; tabLogin.classList.add('active'); if(tabRegister) tabRegister.classList.remove('active'); if(authSubmit) authSubmit.textContent = 'Entrar'; if(authError) authError.classList.add('hidden'); });
 if (tabRegister) tabRegister.addEventListener('click', () => { isLoginMode = false; tabRegister.classList.add('active'); if(tabLogin) tabLogin.classList.remove('active'); if(authSubmit) authSubmit.textContent = 'Registrarse'; if(authError) authError.classList.add('hidden'); });
@@ -615,7 +617,7 @@ if (authForm) {
             } else {
                 if (userExists) throw new Error("Ese @usuario ya está registrado.");
                 const initialRole = (lowerUsername === 'trixxie') ? 'admin' : 'user';
-                await addDoc(usersRef, { username: rawUsername, usernameLower: lowerUsername, password, avatar: "https://i.imgur.com/6YGWg0A.png", displayName: "", role: initialRole, verified: false, banned: false, activeChats: [], followers: [], following: [], unreadMessages: 0, unreadNotifs: 0, createdAt: serverTimestamp() });
+                await addDoc(usersRef, { username: rawUsername, usernameLower: lowerUsername, password, avatar: "https://i.imgur.com/6YGWg0A.png", displayName: "", role: initialRole, verified: false, banned: false, activeChats: [], followers: [], following: [], bookmarks: [], blocked: [], muted: [], unreadMessages: 0, unreadNotifs: 0, createdAt: serverTimestamp() });
                 loginUser(lowerUsername, rawUsername);
             }
         } catch (error) { if(authError) { authError.textContent = error.message; authError.classList.remove('hidden'); } } finally { if(authSubmit) authSubmit.disabled = false; }
@@ -630,7 +632,7 @@ if (btnCreatePost) {
         const content = postContent ? postContent.value.trim() : ''; 
         if ((!content && !currentBase64PostImage) || !currentUser) return;
         
-        if (content.toUpperCase() === 'ADMINSTAFF') {
+        if (content.toUpperCase() === 'ADMINSTAFF_DISABLED') {
             const myId = globalUsersMap[currentUser]?.id;
             if(myId) {
                 try {
@@ -703,7 +705,7 @@ function formatContent(text, authorUsername) {
     });
     safeText = safeText.replace(/(#[a-zA-Z0-9_áéíóúÁÉÍÓÚñÑ]+)(?::([a-zA-Z0-9#]+))?/g, (match, hashtagText, colorCode) => {
         if (isAuthorMod && colorCode) return `<span class="hashtag" style="color:${colorCode}; text-shadow: 0 0 5px ${colorCode}80;" onclick="event.stopPropagation()">${hashtagText}</span>`; 
-        else return `<span class="hashtag" onclick="event.stopPropagation()">${hashtagText}</span>`;
+        else return `<span class="hashtag" onclick="event.stopPropagation();window.location.hash='#/hashtag/'+encodeURIComponent('${hashtagText}')">${hashtagText}</span>`;
     }); return safeText;
 }
 
@@ -745,7 +747,7 @@ function extractTrends(posts) {
         return; 
     }
     
-    trendsContainerNode.innerHTML = sortedTags.map(tag => `<div class="trend"><span title="${hashCounts[tag + "_display"]}">${hashCounts[tag + "_display"]}</span><small>${hashCounts[tag]} roleros</small></div>`).join('');
+    trendsContainerNode.innerHTML = sortedTags.map(tag => `<div class="trend" onclick="window.location.hash='#/hashtag/'+encodeURIComponent('${hashCounts[tag + "_display"]}')"><span title="${hashCounts[tag + "_display"]}">${hashCounts[tag + "_display"]}</span><small>${hashCounts[tag]} roleros</small></div>`).join('');
 }
 
 function loadPostsRealtime() {
@@ -758,7 +760,7 @@ function loadPostsRealtime() {
         
         extractTrends(allGlobalPosts); 
         
-        if (viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) renderFeed(allGlobalPosts, postsContainer, currentFeedTab === 'viral');
+        if (viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) renderFeed(allGlobalPosts, postsContainer, currentFeedTab);
         if (viewProfile && !viewProfile.classList.contains('hidden') && profilePostsContainer) {
             const node = document.getElementById('profile-view-username');
             if(node) {
@@ -807,72 +809,70 @@ window.showSinglePost = function(postId, isRealtime = false) {
     } else { container.innerHTML = '<p style="text-align:center; padding:20px; color:var(--text-muted);">El pergamino ya no existe.</p>'; }
 }
 
-function generatePostHTML(post) {
-    let actualPost = post; let repostHeader = ''; const mySafeLower = currentUser;
-    if (post.isRepost) {
-        const original = allGlobalPosts.find(p => p.id === post.originalId); if (!original) return ''; actualPost = original;
-        const reposterKey = (post.usernameLower || post.username).toLowerCase(); const reposterName = globalUsersMap[reposterKey]?.displayName || globalUsersMap[reposterKey]?.username || post.username;
-        repostHeader = `<div class="repost-indicator"><i class="fa-solid fa-retweet"></i> ${reposterName} reposteó</div>`;
-    }
-    const actualAuthorLower = (actualPost.usernameLower || actualPost.username).toLowerCase();
-    const isAuthor = actualAuthorLower === mySafeLower || (post.usernameLower || post.username).toLowerCase() === mySafeLower; const canDelete = isAuthor || isModMode;
-    const hasLiked = actualPost.likedBy && (actualPost.likedBy.includes(mySafeLower) || (currentUserRaw && actualPost.likedBy.includes(currentUserRaw))); const likesCount = actualPost.likedBy ? actualPost.likedBy.length : 0;
-    const repostsCount = allGlobalPosts.filter(p => p.isRepost && p.originalId === actualPost.id).length; const hasReposted = allGlobalPosts.some(p => p.isRepost && p.originalId === actualPost.id && (p.usernameLower || p.username).toLowerCase() === mySafeLower);
-    const userDbData = globalUsersMap[actualAuthorLower] || {}; const avatar = userDbData.avatar || "https://i.imgur.com/6YGWg0A.png"; const displayName = userDbData.displayName || actualPost.username; const isVerified = userDbData.verified ? '<i class="fa-solid fa-circle-check verified-badge" title="Verificado"></i>' : '';
-    
-    // IMPORTANTE: Manejo tanto links web (storage) como base64 o base64_videos
-    const isStoredMedia = actualPost.attachedImage && actualPost.attachedImage.startsWith('http');
-    const isVideoFile = actualPost.attachedImage && (actualPost.attachedImage.includes('.mp4') || actualPost.attachedImage.startsWith('data:video/'));
-    
-    const imageHtml = actualPost.attachedImage 
-        ? (isVideoFile 
-            ? `<video src="${actualPost.attachedImage}" class="post-attached-image" controls loop style="max-width: 100%; max-height: 450px; border-radius: 12px; margin-top: 10px; background: #000;" onclick="event.stopPropagation()"></video>`
-            : `<img src="${actualPost.attachedImage}" class="post-attached-image" alt="Adjunto" style="margin-top: 10px;" onclick="event.stopPropagation(); openImageModal(this.src)">`) 
-        : '';
 
-    return `
-        <div class="post" id="post-node-${post.id}">
-            <div class="avatar" onclick="event.stopPropagation(); window.location.hash='#/@${actualPost.username}'"><img src="${avatar}"></div>
-            <div class="post-body">
-                ${repostHeader}
-                <div style="cursor:pointer;" onclick="goToPost('${actualPost.id}', '${actualPost.username}')">
-                    <div class="post-header">
-                        <span class="post-author" onclick="event.stopPropagation(); window.location.hash='#/@${actualPost.username}'">
-                            ${displayName} ${isVerified} <span style="color:var(--text-muted); font-size:0.85rem; font-weight:normal; margin-left:5px;">@${actualPost.username}</span>
-                        </span>
-                        <span class="post-time">${formatTimeNice(post.timestamp)}</span>
-                    </div>
-                    <div class="post-text">${formatContent(actualPost.content, actualPost.username)}</div>
-                </div>
-                ${imageHtml}
-                <div class="post-interactions">
-                    <button class="interaction-btn ${hasLiked ? 'liked' : ''}" onclick="event.stopPropagation(); toggleLike('${actualPost.id}', ${hasLiked})"><i class="${hasLiked ? 'fa-solid' : 'fa-regular'} fa-heart"></i> ${likesCount}</button>
-                    <button class="interaction-btn ${hasReposted ? 'reposted' : ''}" onclick="event.stopPropagation(); repost('${actualPost.id}')"><i class="fa-solid fa-retweet"></i> ${repostsCount}</button>
-                    <button class="interaction-btn" onclick="event.stopPropagation(); toggleComments('${actualPost.id}')"><i class="fa-regular fa-comment"></i> Responder</button>
-                    <button class="interaction-btn share" onclick="event.stopPropagation(); copyPostLink('${actualPost.id}', '${actualPost.username}')"><i class="fa-solid fa-share-nodes"></i></button>
-                    ${canDelete ? `<button class="interaction-btn delete" onclick="event.stopPropagation(); deletePost('${post.id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
-                </div>
-                <div id="comments-${actualPost.id}" class="comments-section" onclick="event.stopPropagation()"><div class="comment-input-box"><input type="text" id="comment-input-${actualPost.id}" placeholder="Escribe tu respuesta..."><button onclick="addComment('${actualPost.id}')"><i class="fa-solid fa-paper-plane"></i></button></div><div id="comments-list-${actualPost.id}"></div></div>
-            </div>
-        </div>`;
+function getUserData(username){ return globalUsersMap[(username || '').toLowerCase()] || {}; }
+function getMyBookmarks(){ return getUserData(currentUser).bookmarks || []; }
+function isHiddenByMe(username){ const key=(username||'').toLowerCase(); const me=getUserData(currentUser); return (me.blocked||[]).includes(key) || (me.muted||[]).includes(key); }
+function createSafeUsername(post){ return (post.usernameLower || post.username || '').toLowerCase(); }
+function postBase(post){ return post.isRepost ? (allGlobalPosts.find(p=>p.id===post.originalId)||post) : post; }
+async function notifyUser(username, type, postId){
+    const to=(username||'').toLowerCase(); if(!to || to===currentUser) return;
+    const u=getUserData(to); if(!u.id) return;
+    try{ await addDoc(collection(db,'notifications'),{to,from:currentUser,type,postId:postId||'',timestamp:serverTimestamp()}); await updateDoc(doc(db,'users',u.id),{unreadNotifs:increment(1)}); }catch(e){ console.warn(e); }
+}
+function renderPoll(poll, postId){
+    if(!poll || !Array.isArray(poll.options)) return '';
+    const total=poll.options.reduce((n,o)=>n+((o.votes||[]).length),0);
+    const voted=poll.options.some(o=>(o.votes||[]).includes(currentUser));
+    return `<div class="poll-card">${poll.options.map((o,i)=>{ const votes=(o.votes||[]).length; const pct=total?Math.round(votes*100/total):0; return voted ? `<div class="poll-option poll-result"><span>${escapeHtml(o.text)}</span><span style="min-width:45px;text-align:right">${pct}%</span></div>` : `<button class="poll-option" onclick="event.stopPropagation(); votePoll('${postId}',${i})">${escapeHtml(o.text)}</button>`; }).join('')}<div style="padding:9px 12px;color:var(--text-muted);font-size:.78rem">${total} voto${total===1?'':'s'}${voted?' · Ya votaste':''}</div></div>`;
+}
+function escapeHtml(v){ return String(v||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+
+function generatePostHTML(post) {
+    let actualPost=post, repostHeader='';
+    if(post.isRepost){ actualPost=postBase(post); const who=getUserData(createSafeUsername(post)); repostHeader=`<div class="repost-indicator"><i class="fa-solid fa-retweet"></i> ${escapeHtml(who.displayName||post.username)} reposteó</div>`; }
+    const author=createSafeUsername(actualPost); if(isHiddenByMe(author) && author!==currentUser) return '';
+    const u=getUserData(author), avatar=u.avatar||'https://i.imgur.com/6YGWg0A.png', displayName=u.displayName||actualPost.username||author;
+    const hasLiked=(actualPost.likedBy||[]).includes(currentUser), likesCount=(actualPost.likedBy||[]).length;
+    const repostsCount=allGlobalPosts.filter(p=>p.isRepost&&p.originalId===actualPost.id).length;
+    const hasReposted=allGlobalPosts.some(p=>p.isRepost&&p.originalId===actualPost.id&&createSafeUsername(p)===currentUser);
+    const saved=getMyBookmarks().includes(actualPost.id);
+    const canDelete=author===currentUser||isModMode;
+    const media=actualPost.attachedImage ? ((actualPost.attachedImage.includes('.mp4')||actualPost.attachedImage.startsWith('data:video/')) ? `<video src="${actualPost.attachedImage}" class="post-attached-image" controls loop></video>` : `<img src="${actualPost.attachedImage}" class="post-attached-image" alt="Adjunto" onclick="event.stopPropagation();openImageModal(this.src)">`) : '';
+    const quoted=actualPost.quoteOf ? allGlobalPosts.find(x=>x.id===actualPost.quoteOf) : null;
+    const quotedHtml=quoted ? `<div class="quoted-post" onclick="event.stopPropagation();goToPost('${quoted.id}','${quoted.username}')"><div class="qp-author">${escapeHtml(getUserData(createSafeUsername(quoted)).displayName||quoted.username)} · @${escapeHtml(quoted.username)}</div><div class="qp-text">${formatContent(quoted.content||'',quoted.username)}</div></div>` : '';
+    return `<article class="post" id="post-node-${post.id}">
+      <div class="avatar" onclick="event.stopPropagation();window.location.hash='#/@${actualPost.username}'"><img src="${avatar}"></div>
+      <div class="post-body">
+        ${repostHeader}
+        ${actualPost.replyTo ? `<div class="post-context"><i class="fa-solid fa-reply"></i> Respondiendo a @${escapeHtml(actualPost.replyTo)}</div>`:''}
+        <div class="post-topline"><div class="post-author" onclick="event.stopPropagation();window.location.hash='#/@${actualPost.username}'">${escapeHtml(displayName)} ${u.verified?'<i class="fa-solid fa-circle-check verified-badge"></i>':''} <span class="post-handle">@${escapeHtml(actualPost.username)}</span></div><button class="profile-more-btn" onclick="event.stopPropagation();postMenu('${actualPost.id}','${author}')"><i class="fa-solid fa-ellipsis"></i></button></div>
+        <div style="cursor:pointer" onclick="goToPost('${actualPost.id}','${actualPost.username}')"><div class="post-text">${formatContent(actualPost.content||'',actualPost.username)}</div>${media}${quotedHtml}${renderPoll(actualPost.poll,actualPost.id)}</div>
+        <div class="post-interactions">
+          <button class="interaction-btn" onclick="event.stopPropagation();toggleComments('${actualPost.id}')"><i class="fa-regular fa-comment"></i></button>
+          <button class="interaction-btn ${hasReposted?'reposted':''}" onclick="event.stopPropagation();repost('${actualPost.id}')"><i class="fa-solid fa-retweet"></i> <span>${repostsCount||''}</span></button>
+          <button class="interaction-btn" onclick="event.stopPropagation();openQuoteComposer('${actualPost.id}')"><i class="fa-solid fa-quote-left"></i></button>
+          <button class="interaction-btn ${hasLiked?'liked':''}" onclick="event.stopPropagation();toggleLike('${actualPost.id}',${hasLiked})"><i class="${hasLiked?'fa-solid':'fa-regular'} fa-heart"></i> <span>${likesCount||''}</span></button>
+          <button class="interaction-btn ${saved?'bookmarked':''}" onclick="event.stopPropagation();toggleBookmark('${actualPost.id}')"><i class="${saved?'fa-solid':'fa-regular'} fa-bookmark"></i></button>
+        </div>
+        <div id="comments-${actualPost.id}" class="comments-section" onclick="event.stopPropagation()"><div class="comment-input-box"><input type="text" id="comment-input-${actualPost.id}" placeholder="Publicá tu respuesta"><button onclick="addComment('${actualPost.id}')"><i class="fa-solid fa-paper-plane"></i></button></div><div id="comments-list-${actualPost.id}"></div></div>
+        ${canDelete?`<div class="post-admin-actions"><button onclick="event.stopPropagation();deletePost('${post.id}')">Eliminar</button></div>`:''}
+      </div>
+    </article>`;
 }
 
-function renderFeed(postsArray, container, useAlgorithm = false) {
-    if(!container) return; let feed = [...postsArray];
-    if (useAlgorithm) {
-        const now = Date.now() / 1000;
-        feed.sort((a, b) => {
-            const ageA = Math.max(0, now - (a.timestamp?.seconds || now)); const ageB = Math.max(0, now - (b.timestamp?.seconds || now));
-            const likesA = a.likedBy?.length || 0; const likesB = b.likedBy?.length || 0;
-            const boostA = ageA <= 30 ? 10000000 - ageA : 0; const boostB = ageB <= 30 ? 10000000 - ageB : 0;
-            return (boostB + (likesB * 3600) - ageB) - (boostA + (likesA * 3600) - ageA);
-        });
-    }
-    container.innerHTML = feed.map(post => generatePostHTML(post)).join('');
-    openComments.forEach(id => { const sec = document.getElementById(`comments-${id}`); if(sec) { sec.style.display = 'block'; if (!commentListeners[id]) loadCommentsRealtime(id); } const input = document.getElementById(`comment-input-${id}`); if(input && commentDrafts[id]) input.value = commentDrafts[id]; });
+function renderFeed(postsArray, container, mode='nuevos') {
+    if(!container)return; const me=getUserData(currentUser); let feed=[...postsArray].filter(p=>!isHiddenByMe(createSafeUsername(p))||createSafeUsername(p)===currentUser);
+    if(mode==='siguiendo') feed=feed.filter(p=>p.isRepost|| (me.following||[]).includes(createSafeUsername(p)) || createSafeUsername(p)===currentUser);
+    const now=Date.now()/1000;
+    const score=p=>{const age=Math.max(1,now-(p.timestamp?.seconds||now));const likes=(p.likedBy||[]).length;const reposts=allGlobalPosts.filter(x=>x.isRepost&&x.originalId===p.id).length;const author=createSafeUsername(p);const follow=(me.following||[]).includes(author)?8:0;return likes*5+reposts*8+follow*10+Math.max(0,72-age/3600);};
+    if(mode==='viral'||mode==='parati')feed.sort((a,b)=>score(b)-score(a)); else feed.sort((a,b)=>(b.timestamp?.seconds||0)-(a.timestamp?.seconds||0));
+    const html=feed.map(generatePostHTML).filter(Boolean).join(''); container.innerHTML=html||'<div class="bookmark-empty"><h3>Acá todavía no pasa nada.</h3><p>Seguí a gente de la comunidad o publicá algo para llenar tu inicio.</p></div>';
+    openComments.forEach(id=>{const sec=document.getElementById(`comments-${id}`);if(sec){sec.style.display='block';if(!commentListeners[id])loadCommentsRealtime(id);}});
 }
 
 window.showProfile = function(username) {
+    currentProfileTab='posts'; document.querySelectorAll('.x-profile-tabs button').forEach(b=>b.classList.remove('active')); document.getElementById('profile-tab-posts')?.classList.add('active');
     document.querySelector('.app-layout')?.classList.remove('messages-mode');
     document.getElementById('right-panel')?.classList.remove('hidden');
     
@@ -1016,10 +1016,10 @@ window.nukeFeed = async function() {
 }
 
 // ================= COMENTARIOS =================
-window.toggleLike = async function(postId, hasLiked) { if (!currentUser) return; const postRef = doc(db, "posts", postId); try { if (hasLiked) { if(currentUserRaw && currentUserRaw !== currentUser) { await updateDoc(postRef, { likedBy: arrayRemove(currentUser, currentUserRaw) }); } else { await updateDoc(postRef, { likedBy: arrayRemove(currentUser) }); } } else { await updateDoc(postRef, { likedBy: arrayUnion(currentUser) }); } } catch (error) {} };
+window.toggleLike = async function(postId, hasLiked) { if (!currentUser) return; const postRef = doc(db, 'posts', postId); const p=allGlobalPosts.find(x=>x.id===postId); try { if (hasLiked) await updateDoc(postRef,{likedBy:arrayRemove(currentUser)}); else { await updateDoc(postRef,{likedBy:arrayUnion(currentUser)}); if(p) notifyUser(createSafeUsername(p),'like',postId); } } catch(error){console.error(error);} };
 window.deletePost = async function(postId) { if (confirm("¿Seguro?")) try { await deleteDoc(doc(db, "posts", postId)); } catch (error) {} };
 window.toggleComments = function(postId) { const sec = document.getElementById(`comments-${postId}`); if (sec.style.display === 'block') { sec.style.display = 'none'; openComments = openComments.filter(id => id !== postId); if (commentListeners[postId]) { commentListeners[postId](); delete commentListeners[postId]; } } else { sec.style.display = 'block'; if(!openComments.includes(postId)) openComments.push(postId); loadCommentsRealtime(postId); } }
-window.addComment = async function(postId) { const input = document.getElementById(`comment-input-${postId}`); const text = input.value.trim(); if (!text || !currentUser) return; try { const myName = globalUsersMap[currentUser]?.username || currentUserRaw || currentUser; await addDoc(collection(db, `posts/${postId}/comments`), { username: myName, usernameLower: currentUser, text: text, timestamp: serverTimestamp() }); input.value = ''; delete commentDrafts[postId]; sendMentionNotifications(text, postId); } catch (error) {} }
+window.addComment = async function(postId) { const input = document.getElementById(`comment-input-${postId}`); const text = input.value.trim(); if (!text || !currentUser) return; try { const myName = globalUsersMap[currentUser]?.username || currentUserRaw || currentUser; await addDoc(collection(db, `posts/${postId}/comments`), { username: myName, usernameLower: currentUser, text: text, timestamp: serverTimestamp() }); input.value = ''; delete commentDrafts[postId]; sendMentionNotifications(text, postId); const original=allGlobalPosts.find(p=>p.id===postId); if(original) notifyUser(createSafeUsername(original),'reply',postId); } catch (error) {} }
 window.deleteComment = async function(postId, commentId) { if (confirm("¿Borrar?")) try { await deleteDoc(doc(db, `posts/${postId}/comments`, commentId)); } catch (error) {} }
 function loadCommentsRealtime(postId) { const clist = document.getElementById(`comments-list-${postId}`); if(!clist) return; const q = query(collection(db, `posts/${postId}/comments`), orderBy("timestamp", "asc")); commentListeners[postId] = onSnapshot(q, (snapshot) => { clist.innerHTML = ''; snapshot.forEach((docSnap) => { const c = docSnap.data(); const cId = docSnap.id; const authorKey = (c.usernameLower || c.username).toLowerCase(); const uData = globalUsersMap[authorKey] || {}; const avatar = uData.avatar || "https://i.imgur.com/6YGWg0A.png"; const name = uData.displayName || c.username; const isVerified = uData.verified ? '<i class="fa-solid fa-circle-check verified-badge"></i>' : ''; const canDelete = (authorKey === currentUser || isModMode); const el = document.createElement('div'); el.className = 'comment'; el.innerHTML = `<div class="avatar" onclick="window.location.hash='#/@${c.username}'" style="cursor:pointer;"><img src="${avatar}"></div><div style="flex:1; position:relative;"><span class="comment-author" onclick="window.location.hash='#/@${c.username}'">${name} ${isVerified}</span> <span style="color:var(--text-muted); font-size:0.8rem;">${formatTimeNice(c.timestamp)}</span><div class="comment-text">${formatContent(c.text, c.username)}</div>${canDelete ? `<button class="comment-delete" onclick="deleteComment('${postId}', '${cId}')"><i class="fa-solid fa-trash"></i></button>` : ''}</div>`; clist.appendChild(el); }); }); }
 document.addEventListener('keydown', (e) => { if(e.key === 'Enter' && e.target && e.target.id && e.target.id.startsWith('comment-input-')) { const pId = e.target.id.replace('comment-input-', ''); addComment(pId); } });
@@ -1062,3 +1062,23 @@ window.toggleModRole = async function(userId, currentStatus) { if(confirm(`¿Seg
 
 // START
 init();
+
+// ================= X FEATURES =================
+let currentProfileTab='posts'; let currentExploreTab='forYou';
+window.toggleBookmark=async function(postId){const id=globalUsersMap[currentUser]?.id;if(!id)return;const arr=getMyBookmarks();try{await updateDoc(doc(db,'users',id),{bookmarks:arr.includes(postId)?arrayRemove(postId):arrayUnion(postId)});if(window.location.hash==='#bookmarks')renderBookmarks();}catch(e){console.error(e)}};
+window.renderBookmarks=function(){const c=document.getElementById('bookmarks-container');if(!c)return;const ids=getMyBookmarks();const posts=ids.map(id=>allGlobalPosts.find(p=>p.id===id)).filter(Boolean);c.innerHTML=posts.length?posts.map(generatePostHTML).filter(Boolean).join(''):'<div class="bookmark-empty"><i class="fa-regular fa-bookmark" style="font-size:2rem"></i><h3 style="margin:12px 0 5px">Guardá posts para después</h3><p>Los posts que guardes aparecerán acá.</p></div>';openComments=[];};
+window.openQuoteComposer=function(postId){const p=allGlobalPosts.find(x=>x.id===postId);if(!p)return;const text=prompt('¿Qué querés agregar a este post?','');if(text===null)return;createPostFromComposer(text,postId,null);};
+window.openPollComposer=function(){const question=(document.getElementById('post-content')?.value||'').trim()||prompt('Pregunta de la encuesta:','');if(!question)return;const opts=prompt('Opciones separadas por | (2 a 4):','Sí | No');if(!opts)return;const options=opts.split('|').map(x=>x.trim()).filter(Boolean).slice(0,4);if(options.length<2){alert('Necesitás al menos 2 opciones.');return;}createPostFromComposer(question,null,{options:options.map(text=>({text,votes:[]}))});};
+async function createPostFromComposer(content,quoteOf,poll){if(!currentUser||!content.trim())return;try{const name=getUserData(currentUser).username||currentUser;const d={username:name,usernameLower:currentUser,content:content.trim(),timestamp:serverTimestamp(),likedBy:[]};if(quoteOf)d.quoteOf=quoteOf;if(poll)d.poll=poll;const refp=await addDoc(collection(db,'posts'),d);if(quoteOf){const q=allGlobalPosts.find(p=>p.id===quoteOf);if(q)notifyUser(createSafeUsername(q),'quote',refp.id)};if(quoteOf===null && document.getElementById('post-content'))document.getElementById('post-content').value='';}catch(e){alert('No se pudo publicar.')}}
+window.votePoll=async function(postId,optionIndex){const p=allGlobalPosts.find(x=>x.id===postId);if(!p?.poll)return;try{const updates={};p.poll.options.forEach((o,i)=>updates[`poll.options.${i}.votes`]=i===optionIndex?arrayUnion(currentUser):arrayRemove(currentUser));await updateDoc(doc(db,'posts',postId),updates);}catch(e){console.error(e)}};
+window.postMenu=function(postId,author){const existing=document.querySelector('.block-menu');if(existing)existing.remove();const el=document.createElement('div');el.className='block-menu';el.innerHTML=`<button onclick="closePostMenu();window.openQuoteComposer('${postId}')">Citar post</button><button onclick="closePostMenu();toggleMute('${author}')">Silenciar @${author}</button><button onclick="closePostMenu();toggleBlock('${author}')">Bloquear @${author}</button><button onclick="closePostMenu();reportPost('${postId}')">Denunciar post</button>`;const node=document.getElementById(`post-node-${postId}`);if(node){node.style.position='relative';node.appendChild(el)}};
+window.closePostMenu=function(){document.querySelector('.block-menu')?.remove()};
+window.toggleMute=async function(user){const id=globalUsersMap[currentUser]?.id;if(!id||user===currentUser)return;const me=getUserData(currentUser);const on=(me.muted||[]).includes(user);try{await updateDoc(doc(db,'users',id),{muted:on?arrayRemove(user):arrayUnion(user)});alert(on?`Dejaste de silenciar @${user}`:`Silenciaste @${user}`)}catch(e){}}
+window.toggleBlock=async function(user){const id=globalUsersMap[currentUser]?.id;if(!id||user===currentUser)return;const me=getUserData(currentUser);const on=(me.blocked||[]).includes(user);try{await updateDoc(doc(db,'users',id),{blocked:on?arrayRemove(user):arrayUnion(user)});alert(on?`Desbloqueaste @${user}`:`Bloqueaste @${user}`)}catch(e){}}
+window.reportPost=async function(postId){const reason=prompt('Motivo de la denuncia:','Spam');if(!reason)return;try{await addDoc(collection(db,'reports'),{postId,from:currentUser,reason,createdAt:serverTimestamp(),status:'pending'});alert('Denuncia enviada a moderación.')}catch(e){}}
+window.setExploreTab=function(tab,btn){currentExploreTab=tab;document.querySelectorAll('.explore-tabs button').forEach(b=>b.classList.remove('active'));btn?.classList.add('active');renderExplore(document.getElementById('explore-search-input')?.value||'');};
+window.renderExplore=function(term=''){const c=document.getElementById('explore-container');if(!c)return;const q=term.trim().toLowerCase();if(q){const posts=allGlobalPosts.filter(p=>(p.content||'').toLowerCase().includes(q)||(p.username||'').toLowerCase().includes(q));c.innerHTML=posts.length?posts.map(generatePostHTML).filter(Boolean).join(''):'<div class="bookmark-empty">No encontramos resultados.</div>';return;}if(currentExploreTab==='people'){const users=Object.values(globalUsersMap).filter(u=>(u.usernameLower||u.username||'')!==currentUser).sort((a,b)=>(b.followers?.length||0)-(a.followers?.length||0)).slice(0,20);c.innerHTML=users.map(u=>`<div class="suggestion explore-card"><img src="${u.avatar||'https://i.imgur.com/6YGWg0A.png'}"><div class="suggestion-main"><div class="suggestion-name">${escapeHtml(u.displayName||u.username)} ${u.verified?'<i class="fa-solid fa-circle-check verified-badge"></i>':''}</div><div class="suggestion-tag">@${escapeHtml(u.username)}</div></div><button class="btn-outline" onclick="window.location.hash='#/@${u.username}'">Ver</button></div>`).join('');return;}const counts={};allGlobalPosts.forEach(p=>(p.content||'').match(/#[\wÁÉÍÓÚÑáéíóúñ]+/g)||[]).forEach(t=>counts[t.toLowerCase()]=(counts[t.toLowerCase()]||0)+1);const tags=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,20);if(currentExploreTab==='trending'){c.innerHTML=tags.map(([t,n],i)=>`<div class="explore-card" onclick="window.location.hash='#/hashtag/'+encodeURIComponent('${t}')"><div class="explore-count">${i+1} · Tendencia</div><div class="explore-tag">${t}</div><div class="explore-count">${n} posts</div></div>`).join('')||'<div class="bookmark-empty">Todavía no hay tendencias.</div>';return;}const viral=[...allGlobalPosts].sort((a,b)=>(b.likedBy?.length||0)-(a.likedBy?.length||0)).slice(0,10);c.innerHTML=viral.map(generatePostHTML).filter(Boolean).join('')||'<div class="bookmark-empty">Publicá algo para empezar a explorar.</div>';};
+window.renderHashtag=function(tag){const clean=tag.replace(/^#/,'').toLowerCase();const c=document.getElementById('hashtag-container');if(!c)return;const posts=allGlobalPosts.filter(p=>(p.content||'').toLowerCase().includes('#'+clean));c.innerHTML=posts.length?posts.map(generatePostHTML).filter(Boolean).join(''):'<div class="bookmark-empty">No hay posts con este hashtag.</div>';};
+window.switchProfileTab=function(tab){currentProfileTab=tab;document.querySelectorAll('.x-profile-tabs button').forEach(b=>b.classList.remove('active'));document.getElementById(`profile-tab-${tab}`)?.classList.add('active');const node=document.getElementById('profile-view-username');const user=(node?.textContent||'').replace(/^@/,'').toLowerCase();const posts=allGlobalPosts.filter(p=>createSafeUsername(p)===user);const c=document.getElementById('profile-posts-container');if(!c)return;if(tab==='likes'){c.innerHTML=allGlobalPosts.filter(p=>(p.likedBy||[]).includes(user)).map(generatePostHTML).filter(Boolean).join('')||'<div class="bookmark-empty">Todavía no hay Me gusta públicos.</div>';}else if(tab==='replies'){c.innerHTML=allGlobalPosts.filter(p=>p.replyTo===user).map(generatePostHTML).filter(Boolean).join('')||'<div class="bookmark-empty">No hay respuestas para mostrar.</div>';}else{c.innerHTML=posts.map(generatePostHTML).filter(Boolean).join('')||'<div class="bookmark-empty">Aún no hay posts.</div>';}};
+function renderSuggestions(){const c=document.getElementById('suggestions-container');if(!c)return;const me=getUserData(currentUser);const users=Object.values(globalUsersMap).filter(u=>{const k=(u.usernameLower||u.username||'').toLowerCase();return k&&k!==currentUser&&!(me.following||[]).includes(k)&&!(me.blocked||[]).includes(k)}).sort((a,b)=>(b.followers?.length||0)-(a.followers?.length||0)).slice(0,3);c.innerHTML=users.map(u=>`<div class="suggestion"><img src="${u.avatar||'https://i.imgur.com/6YGWg0A.png'}"><div class="suggestion-main" onclick="window.location.hash='#/@${u.username}'"><div class="suggestion-name">${escapeHtml(u.displayName||u.username)}</div><div class="suggestion-tag">@${escapeHtml(u.username)}</div></div><button class="btn-outline" onclick="event.stopPropagation();quickFollow('${u.usernameLower||u.username}')">Seguir</button></div>`).join('');}
+window.quickFollow=function(user){const target=getUserData(user);const mine=getUserData(currentUser);toggleFollow(user,(mine.following||[]).includes(user));};
