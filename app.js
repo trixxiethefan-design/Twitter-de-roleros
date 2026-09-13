@@ -141,8 +141,25 @@ function handleRouting() {
     } else if (hash === '#mod') {
         hideAllViews(); viewMod?.classList.remove('hidden'); document.getElementById('nav-mod')?.classList.add('active'); 
         const searchInput = document.getElementById('mod-search-input'); renderModPanel(searchInput ? searchInput.value.toLowerCase() : ""); 
-    } else if (hash === '#search') {
-        hideAllViews(); const vs = document.getElementById('view-search'); if (vs) vs.classList.remove('hidden'); document.getElementById('nav-search')?.classList.add('active'); 
+    } else if (hash === '#search' || hash === '#explore') {
+        hideAllViews();
+        viewExplore?.classList.remove('hidden');
+        document.getElementById('nav-search')?.classList.add('active');
+        if (typeof window.renderExplore === 'function') renderExplore(document.getElementById('explore-search-input')?.value || '');
+    } else if (hash === '#bookmarks') {
+        hideAllViews();
+        viewBookmarks?.classList.remove('hidden');
+        document.getElementById('nav-bookmarks')?.classList.add('active');
+        if (typeof window.renderBookmarks === 'function') renderBookmarks();
+    } else if (hash.startsWith('#/hashtag/')) {
+        hideAllViews();
+        viewHashtag?.classList.remove('hidden');
+        document.getElementById('nav-search')?.classList.add('active');
+        const rawTag = decodeURIComponent(hash.substring('#/hashtag/'.length));
+        const cleanTag = rawTag.startsWith('#') ? rawTag : '#' + rawTag;
+        const title = document.getElementById('hashtag-title');
+        if (title) title.textContent = cleanTag;
+        if (typeof window.renderHashtag === 'function') renderHashtag(cleanTag);
     } else if (hash === '#feed') {
         hideAllViews(); viewFeed?.classList.remove('hidden'); document.getElementById('nav-home')?.classList.add('active'); 
         if(allGlobalPosts.length > 0 && postsContainer) renderFeed(allGlobalPosts, postsContainer, currentFeedTab);
@@ -284,6 +301,8 @@ function listenToGlobalUsers() {
         if (allGlobalPosts.length > 0 && viewFeed && !viewFeed.classList.contains('hidden') && postsContainer) { 
             renderFeed(allGlobalPosts, postsContainer, currentFeedTab); 
         }
+        if (viewExplore && !viewExplore.classList.contains('hidden')) if (typeof window.renderExplore === 'function') renderExplore(document.getElementById('explore-search-input')?.value || '');
+        if (viewBookmarks && !viewBookmarks.classList.contains('hidden') && typeof window.renderBookmarks === 'function') renderBookmarks();
         if (viewProfile && !viewProfile.classList.contains('hidden')) {
             const usernameNode = document.getElementById('profile-view-username');
             if(usernameNode) {
@@ -1077,7 +1096,59 @@ window.toggleMute=async function(user){const id=globalUsersMap[currentUser]?.id;
 window.toggleBlock=async function(user){const id=globalUsersMap[currentUser]?.id;if(!id||user===currentUser)return;const me=getUserData(currentUser);const on=(me.blocked||[]).includes(user);try{await updateDoc(doc(db,'users',id),{blocked:on?arrayRemove(user):arrayUnion(user)});alert(on?`Desbloqueaste @${user}`:`Bloqueaste @${user}`)}catch(e){}}
 window.reportPost=async function(postId){const reason=prompt('Motivo de la denuncia:','Spam');if(!reason)return;try{await addDoc(collection(db,'reports'),{postId,from:currentUser,reason,createdAt:serverTimestamp(),status:'pending'});alert('Denuncia enviada a moderación.')}catch(e){}}
 window.setExploreTab=function(tab,btn){currentExploreTab=tab;document.querySelectorAll('.explore-tabs button').forEach(b=>b.classList.remove('active'));btn?.classList.add('active');renderExplore(document.getElementById('explore-search-input')?.value||'');};
-window.renderExplore=function(term=''){const c=document.getElementById('explore-container');if(!c)return;const q=term.trim().toLowerCase();if(q){const posts=allGlobalPosts.filter(p=>(p.content||'').toLowerCase().includes(q)||(p.username||'').toLowerCase().includes(q));c.innerHTML=posts.length?posts.map(generatePostHTML).filter(Boolean).join(''):'<div class="bookmark-empty">No encontramos resultados.</div>';return;}if(currentExploreTab==='people'){const users=Object.values(globalUsersMap).filter(u=>(u.usernameLower||u.username||'')!==currentUser).sort((a,b)=>(b.followers?.length||0)-(a.followers?.length||0)).slice(0,20);c.innerHTML=users.map(u=>`<div class="suggestion explore-card"><img src="${u.avatar||'https://i.imgur.com/6YGWg0A.png'}"><div class="suggestion-main"><div class="suggestion-name">${escapeHtml(u.displayName||u.username)} ${u.verified?'<i class="fa-solid fa-circle-check verified-badge"></i>':''}</div><div class="suggestion-tag">@${escapeHtml(u.username)}</div></div><button class="btn-outline" onclick="window.location.hash='#/@${u.username}'">Ver</button></div>`).join('');return;}const counts={};allGlobalPosts.forEach(p=>(p.content||'').match(/#[\wÁÉÍÓÚÑáéíóúñ]+/g)||[]).forEach(t=>counts[t.toLowerCase()]=(counts[t.toLowerCase()]||0)+1);const tags=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,20);if(currentExploreTab==='trending'){c.innerHTML=tags.map(([t,n],i)=>`<div class="explore-card" onclick="window.location.hash='#/hashtag/'+encodeURIComponent('${t}')"><div class="explore-count">${i+1} · Tendencia</div><div class="explore-tag">${t}</div><div class="explore-count">${n} posts</div></div>`).join('')||'<div class="bookmark-empty">Todavía no hay tendencias.</div>';return;}const viral=[...allGlobalPosts].sort((a,b)=>(b.likedBy?.length||0)-(a.likedBy?.length||0)).slice(0,10);c.innerHTML=viral.map(generatePostHTML).filter(Boolean).join('')||'<div class="bookmark-empty">Publicá algo para empezar a explorar.</div>';};
+window.renderExplore=function(term=''){
+    const c=document.getElementById('explore-container'); if(!c)return;
+    const q=term.trim().toLowerCase();
+    const counts={};
+    allGlobalPosts.forEach(p=>{
+        (p.content||'').match(/#[\wÁÉÍÓÚÑáéíóúñ]+/g)?.forEach(t=>{
+            const key=t.toLowerCase();
+            counts[key]=(counts[key]||0)+1;
+        });
+    });
+    const tags=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,12);
+
+    if(q){
+        const postResults=allGlobalPosts.filter(p=>(p.content||'').toLowerCase().includes(q)||(p.username||'').toLowerCase().includes(q));
+        const userResults=Object.values(globalUsersMap).filter(u=>
+            (u.usernameLower||u.username||'').toLowerCase().includes(q) ||
+            (u.displayName||'').toLowerCase().includes(q)
+        ).filter(u=>(u.usernameLower||u.username||'').toLowerCase()!==currentUser).slice(0,8);
+        const hashtagResults=tags.filter(([tag])=>tag.includes(q.replace(/^#/,'').toLowerCase())).slice(0,6);
+        let html='';
+        if(hashtagResults.length){
+            html+=`<section class="explore-section"><h3>Temas</h3><div class="explore-grid">${hashtagResults.map(([tag,n])=>`<div class="explore-card" onclick="window.location.hash='#/hashtag/'+encodeURIComponent('${tag}')"><div class="explore-count">Tendencia</div><div class="explore-tag">${escapeHtml(tag)}</div><div class="explore-count">${n} posts</div></div>`).join('')}</div></section>`;
+        }
+        if(userResults.length){
+            html+=`<section class="explore-section"><h3>Personas</h3>${userResults.map(u=>`<div class="suggestion explore-card"><img src="${u.avatar||'https://i.imgur.com/6YGWg0A.png'}"><div class="suggestion-main" onclick="window.location.hash='#/@${u.username}'"><div class="suggestion-name">${escapeHtml(u.displayName||u.username)} ${u.verified?'<i class="fa-solid fa-circle-check verified-badge"></i>':''}</div><div class="suggestion-tag">@${escapeHtml(u.username)}</div></div><button class="btn-outline" onclick="event.stopPropagation();window.location.hash='#/@${u.username}'">Ver</button></div>`).join('')}</section>`;
+        }
+        html+=`<section class="explore-section"><h3>Posts</h3>`;
+        html+=postResults.length?postResults.map(generatePostHTML).filter(Boolean).join(''):'<div class="bookmark-empty">No encontramos posts que coincidan.</div>';
+        html+='</section>';
+        c.innerHTML=html;
+        return;
+    }
+
+    const viral=[...allGlobalPosts].filter(p=>!isHiddenByMe(createSafeUsername(p))).sort((a,b)=>{
+        const sa=(b.likedBy?.length||0)*5 + allGlobalPosts.filter(x=>x.isRepost&&x.originalId===b.id).length*8;
+        const sb=(a.likedBy?.length||0)*5 + allGlobalPosts.filter(x=>x.isRepost&&x.originalId===a.id).length*8;
+        return sa-sb;
+    }).slice(0,6);
+    const people=Object.values(globalUsersMap).filter(u=>{
+        const k=(u.usernameLower||u.username||'').toLowerCase();
+        const me=getUserData(currentUser);
+        return k&&k!==currentUser&&!(me.following||[]).includes(k)&&!(me.blocked||[]).includes(k);
+    }).sort((a,b)=>(b.followers?.length||0)-(a.followers?.length||0)).slice(0,5);
+    let html='';
+    html+=`<section class="explore-section"><div class="section-title-row"><h3>Qué está pasando</h3><button class="link-more" onclick="setExploreTab('trending',document.querySelector('.explore-tabs button:nth-child(2)'))">Ver todo</button></div>`;
+    html+=tags.length?`<div class="explore-grid">${tags.map(([tag,n],i)=>`<div class="explore-card" onclick="window.location.hash='#/hashtag/'+encodeURIComponent('${tag}')"><div class="explore-count">${i+1} · Tendencia</div><div class="explore-tag">${escapeHtml(tag)}</div><div class="explore-count">${n} posts</div></div>`).join('')}</div>`:'<div class="bookmark-empty">Todavía no hay tendencias.</div>';
+    html+='</section>';
+    if(people.length){
+        html+=`<section class="explore-section"><div class="section-title-row"><h3>A quién seguir</h3><button class="link-more" onclick="setExploreTab('people',document.querySelector('.explore-tabs button:nth-child(3)'))">Ver todo</button></div>${people.map(u=>`<div class="suggestion explore-card"><img src="${u.avatar||'https://i.imgur.com/6YGWg0A.png'}"><div class="suggestion-main" onclick="window.location.hash='#/@${u.username}'"><div class="suggestion-name">${escapeHtml(u.displayName||u.username)} ${u.verified?'<i class="fa-solid fa-circle-check verified-badge"></i>':''}</div><div class="suggestion-tag">@${escapeHtml(u.username)}</div></div><button class="btn-outline" onclick="event.stopPropagation();quickFollow('${u.usernameLower||u.username}')">Seguir</button></div>`).join('')}</section>`;
+    }
+    html+=`<section class="explore-section"><div class="section-title-row"><h3>Lo más comentado</h3></div>${viral.length?viral.map(generatePostHTML).filter(Boolean).join(''):'<div class="bookmark-empty">Publicá algo para empezar a explorar.</div>'}</section>`;
+    c.innerHTML=html;
+};
 window.renderHashtag=function(tag){const clean=tag.replace(/^#/,'').toLowerCase();const c=document.getElementById('hashtag-container');if(!c)return;const posts=allGlobalPosts.filter(p=>(p.content||'').toLowerCase().includes('#'+clean));c.innerHTML=posts.length?posts.map(generatePostHTML).filter(Boolean).join(''):'<div class="bookmark-empty">No hay posts con este hashtag.</div>';};
 window.switchProfileTab=function(tab){currentProfileTab=tab;document.querySelectorAll('.x-profile-tabs button').forEach(b=>b.classList.remove('active'));document.getElementById(`profile-tab-${tab}`)?.classList.add('active');const node=document.getElementById('profile-view-username');const user=(node?.textContent||'').replace(/^@/,'').toLowerCase();const posts=allGlobalPosts.filter(p=>createSafeUsername(p)===user);const c=document.getElementById('profile-posts-container');if(!c)return;if(tab==='likes'){c.innerHTML=allGlobalPosts.filter(p=>(p.likedBy||[]).includes(user)).map(generatePostHTML).filter(Boolean).join('')||'<div class="bookmark-empty">Todavía no hay Me gusta públicos.</div>';}else if(tab==='replies'){c.innerHTML=allGlobalPosts.filter(p=>p.replyTo===user).map(generatePostHTML).filter(Boolean).join('')||'<div class="bookmark-empty">No hay respuestas para mostrar.</div>';}else{c.innerHTML=posts.map(generatePostHTML).filter(Boolean).join('')||'<div class="bookmark-empty">Aún no hay posts.</div>';}};
 function renderSuggestions(){const c=document.getElementById('suggestions-container');if(!c)return;const me=getUserData(currentUser);const users=Object.values(globalUsersMap).filter(u=>{const k=(u.usernameLower||u.username||'').toLowerCase();return k&&k!==currentUser&&!(me.following||[]).includes(k)&&!(me.blocked||[]).includes(k)}).sort((a,b)=>(b.followers?.length||0)-(a.followers?.length||0)).slice(0,3);c.innerHTML=users.map(u=>`<div class="suggestion"><img src="${u.avatar||'https://i.imgur.com/6YGWg0A.png'}"><div class="suggestion-main" onclick="window.location.hash='#/@${u.username}'"><div class="suggestion-name">${escapeHtml(u.displayName||u.username)}</div><div class="suggestion-tag">@${escapeHtml(u.username)}</div></div><button class="btn-outline" onclick="event.stopPropagation();quickFollow('${u.usernameLower||u.username}')">Seguir</button></div>`).join('');}

@@ -145,7 +145,7 @@
 
             <div id="view-explore" class="hidden">
                 <header class="feed-header"><h2>Explorar</h2></header>
-                <div class="explore-search-wrap"><div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="explore-search-input" placeholder="Buscar en RolerNet..." oninput="renderExplore(this.value)"></div></div>
+                <div class="explore-search-wrap"><div class="explore-subtitle">Todo lo que está pasando en RolerNet</div><div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="explore-search-input" placeholder="Buscar en RolerNet..." oninput="renderExplore(this.value)"></div></div>
                 <div class="explore-tabs"><button class="active" onclick="setExploreTab('forYou',this)">Para ti</button><button onclick="setExploreTab('trending',this)">Tendencias</button><button onclick="setExploreTab('people',this)">Personas</button></div>
                 <div id="explore-container"></div>
             </div>
@@ -311,7 +311,7 @@
         <aside id="right-panel" class="right-panel">
             <div class="search-bar">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" id="right-panel-search" placeholder="Buscar" onkeydown="if(event.key === 'Enter'){ document.getElementById('main-search-input').value = this.value; handleSearchInput(event); }">
+                <input type="text" id="right-panel-search" placeholder="Buscar en RolerNet" onfocus="showSearchView()" onkeydown="if(event.key === 'Enter'){ showSearchView(); setTimeout(()=>{const i=document.getElementById('explore-search-input'); if(i){i.value=this.value; renderExplore(this.value); i.focus();}},0); }">
             </div>
             <div class="trends-box">
                 <h3>Lo que está pasando</h3>
