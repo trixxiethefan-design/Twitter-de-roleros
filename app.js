@@ -180,19 +180,38 @@ window.showThreadsView = function() { if(window.location.hash !== '#threads') wi
 window.showModView = function() { if(window.location.hash !== '#mod') window.location.hash = '#mod'; else handleRouting(); }
 window.showNotifsView = function() { if(window.location.hash !== '#notifs') window.location.hash = '#notifs'; else handleRouting(); }
 window.showMessagesView = function() { if(window.location.hash !== '#messages') window.location.hash = '#messages'; else handleRouting(); }
-function navigateToHash(targetHash) {
-    if (!currentUser) return;
-    if (window.location.hash !== targetHash) {
-        window.location.hash = targetHash;
+function activateExploreView() {
+    hideAllViews();
+    if (viewExplore) viewExplore.classList.remove('hidden');
+    document.getElementById('nav-search')?.classList.add('active');
+    document.querySelector('.app-layout')?.classList.remove('messages-mode');
+    document.getElementById('right-panel')?.classList.remove('hidden');
+    if (typeof window.renderExplore === 'function') {
+        window.renderExplore(document.getElementById('explore-search-input')?.value || '');
     }
-    // Ejecutamos la ruta inmediatamente. Así la navegación no depende
-    // de que el evento hashchange llegue en otro ciclo del navegador.
-    handleRouting();
 }
 
-window.showSearchView = function() { navigateToHash('#explore'); }
-window.showExploreView = function() { navigateToHash('#explore'); }
-window.showBookmarksView = function() { navigateToHash('#bookmarks'); }
+function activateBookmarksView() {
+    hideAllViews();
+    if (viewBookmarks) viewBookmarks.classList.remove('hidden');
+    document.getElementById('nav-bookmarks')?.classList.add('active');
+    document.querySelector('.app-layout')?.classList.remove('messages-mode');
+    document.getElementById('right-panel')?.classList.remove('hidden');
+    if (typeof window.renderBookmarks === 'function') window.renderBookmarks();
+}
+
+window.showSearchView = function() {
+    window.location.hash = '#explore';
+    activateExploreView();
+}
+window.showExploreView = function() {
+    window.location.hash = '#explore';
+    activateExploreView();
+}
+window.showBookmarksView = function() {
+    window.location.hash = '#bookmarks';
+    activateBookmarksView();
+}
 
 // Navegación robusta: entra aunque el hash ya sea el mismo.
 // También evita depender de onclick inline, algo que Chrome puede bloquear por CSP.
