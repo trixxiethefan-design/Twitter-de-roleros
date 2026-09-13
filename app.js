@@ -176,6 +176,13 @@ window.showSearchView = function() { if(window.location.hash !== '#explore') win
 window.showExploreView = function() { window.showSearchView(); }
 window.showBookmarksView = function() { if(window.location.hash !== '#bookmarks') window.location.hash = '#bookmarks'; else handleRouting(); }
 
+// Navegación robusta: no depende de onclick inline (compatible con CSP).
+document.getElementById('nav-search')?.addEventListener('click', (e) => { e.preventDefault(); window.location.hash = '#explore'; });
+document.getElementById('nav-bookmarks')?.addEventListener('click', (e) => { e.preventDefault(); window.location.hash = '#bookmarks'; });
+const rightSearch = document.getElementById('right-panel-search');
+rightSearch?.addEventListener('focus', () => { window.location.hash = '#explore'; setTimeout(() => { const i=document.getElementById('explore-search-input'); if(i){ i.focus(); } }, 0); });
+rightSearch?.addEventListener('keydown', (e) => { if(e.key==='Enter'){ e.preventDefault(); window.location.hash='#explore'; const i=document.getElementById('explore-search-input'); if(i){ i.value=rightSearch.value; window.renderExplore?.(rightSearch.value); i.focus(); } } });
+
 function showAuth() { 
     authView?.classList.remove('hidden'); 
     appView?.classList.add('hidden'); 

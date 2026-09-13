@@ -75,10 +75,10 @@
             <a href="javascript:void(0)" id="nav-home" class="active" onclick="window.showFeedView()" title="Inicio">
                 <i class="fa-solid fa-house"></i> <span class="nav-text">Inicio</span>
             </a>
-            <a href="javascript:void(0)" id="nav-search" onclick="showSearchView()" title="Explorar">
+            <a href="#explore" id="nav-search" title="Explorar">
                 <i class="fa-solid fa-magnifying-glass"></i> <span class="nav-text">Explorar</span>
             </a>
-            <a href="javascript:void(0)" id="nav-bookmarks" onclick="showBookmarksView()" title="Guardados">
+            <a href="#bookmarks" id="nav-bookmarks" title="Guardados">
                 <i class="fa-regular fa-bookmark"></i> <span class="nav-text">Guardados</span>
             </a>
             <a href="javascript:void(0)" id="nav-notifs" onclick="showNotifsView()" title="Notificaciones">
@@ -311,7 +311,7 @@
         <aside id="right-panel" class="right-panel">
             <div class="search-bar">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" id="right-panel-search" placeholder="Buscar en RolerNet" onfocus="showSearchView()" onkeydown="if(event.key === 'Enter'){ showSearchView(); setTimeout(()=>{const i=document.getElementById('explore-search-input'); if(i){i.value=this.value; renderExplore(this.value); i.focus();}},0); }">
+                <input type="text" id="right-panel-search" placeholder="Buscar en RolerNet" >
             </div>
             <div class="trends-box">
                 <h3>Lo que está pasando</h3>
