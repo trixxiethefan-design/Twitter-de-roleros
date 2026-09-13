@@ -172,16 +172,52 @@ window.showThreadsView = function() { if(window.location.hash !== '#threads') wi
 window.showModView = function() { if(window.location.hash !== '#mod') window.location.hash = '#mod'; else handleRouting(); }
 window.showNotifsView = function() { if(window.location.hash !== '#notifs') window.location.hash = '#notifs'; else handleRouting(); }
 window.showMessagesView = function() { if(window.location.hash !== '#messages') window.location.hash = '#messages'; else handleRouting(); }
-window.showSearchView = function() { if(window.location.hash !== '#explore') window.location.hash = '#explore'; else handleRouting(); }
-window.showExploreView = function() { window.showSearchView(); }
-window.showBookmarksView = function() { if(window.location.hash !== '#bookmarks') window.location.hash = '#bookmarks'; else handleRouting(); }
+window.showSearchView = function() { window.showExploreView(); }
+window.showExploreView = function() {
+    if (window.location.hash !== '#explore') {
+        window.location.hash = '#explore';
+    } else {
+        handleRouting();
+    }
+}
+window.showBookmarksView = function() {
+    if (window.location.hash !== '#bookmarks') {
+        window.location.hash = '#bookmarks';
+    } else {
+        handleRouting();
+    }
+}
 
-// Navegación robusta: no depende de onclick inline (compatible con CSP).
-document.getElementById('nav-search')?.addEventListener('click', (e) => { e.preventDefault(); window.location.hash = '#explore'; });
-document.getElementById('nav-bookmarks')?.addEventListener('click', (e) => { e.preventDefault(); window.location.hash = '#bookmarks'; });
+// Navegación robusta: entra aunque el hash ya sea el mismo.
+// También evita depender de onclick inline, algo que Chrome puede bloquear por CSP.
+document.getElementById('nav-search')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.showExploreView();
+});
+document.getElementById('nav-bookmarks')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.showBookmarksView();
+});
 const rightSearch = document.getElementById('right-panel-search');
-rightSearch?.addEventListener('focus', () => { window.location.hash = '#explore'; setTimeout(() => { const i=document.getElementById('explore-search-input'); if(i){ i.focus(); } }, 0); });
-rightSearch?.addEventListener('keydown', (e) => { if(e.key==='Enter'){ e.preventDefault(); window.location.hash='#explore'; const i=document.getElementById('explore-search-input'); if(i){ i.value=rightSearch.value; window.renderExplore?.(rightSearch.value); i.focus(); } } });
+rightSearch?.addEventListener('focus', () => {
+    window.showExploreView();
+    setTimeout(() => {
+        const i = document.getElementById('explore-search-input');
+        if (i) i.focus();
+    }, 50);
+});
+rightSearch?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        window.showExploreView();
+        const i = document.getElementById('explore-search-input');
+        if (i) {
+            i.value = rightSearch.value;
+            window.renderExplore?.(rightSearch.value);
+            i.focus();
+        }
+    }
+});
 
 function showAuth() { 
     authView?.classList.remove('hidden'); 
